@@ -3,7 +3,7 @@
 https://www.youtube.com/watch?v=7nv6Si49XBo
 
 # Web demo
-
+https://nextjs-five-tau-89.vercel.app/
 
 # 🏗 Scaffold-ETH 2
 
