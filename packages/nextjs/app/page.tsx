@@ -9,7 +9,7 @@ import { formatUnits } from 'viem';
 import { getAccount, simulateContract, writeContract, readContract, getTransactionConfirmations } from '@wagmi/core'
 import { sepolia } from '@wagmi/core/chains'
 import { parseEther } from 'viem'
-import { put, generateQuiz, getQuiz, getQuizSolved, saveData, getData } from '~~/action/action'
+import {  generateQuiz, saveData, getData } from '~~/action/action'
 import { notification } from "~~/utils/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 import * as use from '@tensorflow-models/universal-sentence-encoder';
@@ -19,17 +19,17 @@ import * as tf from '@tensorflow/tfjs';
 
 const { connector } = getAccount(wagmiConfig)
 
-async function calculateSimilarity(sentences:any) {
+async function calculateSimilarity(sentences: any) {
   // Load the Universal Sentence Encoder model
   const model = await use.load();
-  
+
   // Get sentence embeddings
   const embeddings = await model.embed(sentences);
-  
+
   // Convert embeddings to array
   const embArray1 = embeddings.arraySync()[0];
   const embArray2 = embeddings.arraySync()[1];
-  
+
   // Function to calculate cosine similarity
   //@ts-ignore
   function cosineSimilarity(vecA, vecB) {
@@ -39,10 +39,10 @@ async function calculateSimilarity(sentences:any) {
     //@ts-ignore
     return dotProduct / (magnitudeA * magnitudeB);
   }
-  
+
   // Calculate cosine similarity
   const similarity = cosineSimilarity(tf.tensor(embArray1), tf.tensor(embArray2));
-  
+
   return similarity;
 }
 
@@ -67,7 +67,7 @@ async function executeContractFunction(prompt: any) {
     functionName: 'calculateAIResult',
     args: [
       15,
-     prompt
+      prompt
     ],
     value: parseEther(convertBigIntToEther(result)),
     connector
@@ -93,6 +93,7 @@ async function executeContractFunction(prompt: any) {
     chainId: sepolia.id,
   })
   console.log("result2", result2)
+  let stop=0;
   while ((result2 as string).length === 0) {
     result2 = await readContract(wagmiConfig, {
       address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
@@ -101,6 +102,10 @@ async function executeContractFunction(prompt: any) {
       args: [15, prompt],
       chainId: sepolia.id,
     })
+    stop+=1
+    if(stop===20){
+      break;
+    }
     console.log("result2", result2)
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
@@ -117,18 +122,14 @@ const Home: NextPage = () => {
   const [allQuiz, setAllQuiz] = useState([])
   const [allQuizSolved, setAllQuizSolved] = useState([])
   const [answers, setAnswers] = useState({})
-  const handleInputChange = (id:any, value:any) => {
+  const handleInputChange = (id: any, value: any) => {
     setAnswers({
       ...answers,
       [id]: value,
     });
   };
 
-  const handleSubmit = (event:any) => {
-    event.preventDefault();
-    // Process the answers here
-    console.log(answers);
-  };
+  
   useEffect(() => {
     const fetchData = async () => {
 
@@ -210,7 +211,7 @@ const Home: NextPage = () => {
             {/* @ts-ignore */}
             <div className="flex flex-col items-center">
               {/* @ts-ignore */}
-              <span className="badge p-6 text-lg">Quiz that you've solved: {allQuizSolved.filter(quiz => quiz.address === connectedAddress).length}/{allQuiz.filter(quiz => quiz.address !== connectedAddress).length}</span>
+              <span className="badge p-6 text-lg">Quiz that you have solved: {allQuizSolved.filter(quiz => quiz.address === connectedAddress).length}/{allQuiz.filter(quiz => quiz.address !== connectedAddress).length}</span>
               <button
                 onClick={async () => {
                   setLoading(true);
@@ -239,30 +240,53 @@ const Home: NextPage = () => {
                 <code>{a.answer}</code>
               </h2>
               {/* @ts-ignore */}
-              {(connectedAddress !== a.address || !allQuizSolved.some(quizSolved => quizSolved.address === connectedAddress)) && <>
+              {(connectedAddress !== a.address && !allQuizSolved.some(quizSolved => quizSolved.quizId === a._id)) && <>
                 {/* @ts-ignore */}
-                <input value={answers[a._id] || ''}   onChange={(e) => handleInputChange(a._id, e.target.value)}
+                <input value={answers[a._id] || ''} onChange={(e) => handleInputChange(a._id, e.target.value)}
                   disabled={loading}
                   type="text"
                   placeholder="Enter your answer"
                   className="mb-2 border-2 border-gray-300 bg-white h-10 px-5 pr-16 rounded-lg text-sm focus:outline-none text-black"
-                  
+
 
                 />
                 <button disabled={loading}
                   onClick={async () => {
+                    setLoading(true)
                     //@ts-ignore
-                    const what = await generateQuiz(answers[a._id])
+                    const what = await executeContractFunction(answers[a._id])
                     //@ts-ignore
                     console.log(answers[a._id])
-                    console.log(JSON.parse(what).answer)
+                    console.log(what)
                     //@ts-ignore
                     console.log(a.answer)
                     //@ts-ignore
-                    const near=await calculateSimilarity([JSON.parse(what).answer,a.answer])
+                    const near = await calculateSimilarity([what, a.answer])
+                    if (near > 0.5) {
+                      //@ts-ignore
+                      saveData({ question:answers[a._id],address: connectedAddress, answer:what as string, similarity: near, quizId: a._id }, "quiz-solved")
+                      notification.success(
+                        "Congrats you solved the quiz",
+                        {
+                          duration: 5000,
+                        },
+                      );
+                    }else{
+                      notification.error(
+                        "Sorry, please try again thats not the answer",
+                        {
+                          duration: 5000,
+                        },
+                      );
+                    }
+                    const responseQuiz = await getData("quiz");
+                    setAllQuiz(responseQuiz)
+                    const responseQuizSolved = await getData("quiz-solved");
+                    setAllQuizSolved(responseQuizSolved)
                     // const near=cosineSimilarityOfStrings("It is a bear species native to south central China","It is a bear species native to south central China")
-                    console.log("near",near)
-                    
+                    console.log("near", near)
+                    setLoading(false)
+
                   }}
                   className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                   {loading ? <div className="flex justify-center">
@@ -275,9 +299,17 @@ const Home: NextPage = () => {
                 </button>
               </>}
               {/* @ts-ignore */}
-              {allQuizSolved.some(quizSolved => quizSolved.address === connectedAddress) && (
+              {allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)  && (
                 <div className="text-center text-green-500">
                   You have already solved this quiz!
+                <div className="text-center text-blue-500">
+                  {/* @ts-ignore */}
+                  <p>Similarity Score: {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id)[0].similarity}</p>
+                  {/* @ts-ignore */}
+                  <p>Your Question: {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id)[0].question}</p>
+                  {/* @ts-ignore */}
+                  <p>AI Answer: {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id)[0].answer}</p>
+                </div>
                 </div>
               )}
 

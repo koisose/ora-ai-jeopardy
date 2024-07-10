@@ -1,3 +1,10 @@
+# Video Demo
+
+https://www.youtube.com/watch?v=7nv6Si49XBo
+
+# Web demo
+
+
 # 🏗 Scaffold-ETH 2
 
 <h4 align="center">
