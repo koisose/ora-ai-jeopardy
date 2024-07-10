@@ -4,15 +4,19 @@ import type { NextPage } from "next";
 import { useAccount } from "wagmi";
 import { Address } from "~~/components/scaffold-eth";
 import { abi } from '~~/abi/abi'
-import { useState } from "react"
+import { useState,useEffect } from "react"
 import { formatUnits } from 'viem';
 import { getAccount,simulateContract, writeContract, http, createConfig, readContract, getTransactionConfirmations } from '@wagmi/core'
 import { sepolia } from '@wagmi/core/chains'
 import { parseEther } from 'viem'
-import { put } from '~~/action/action'
+import { put,generateQuiz,getQuiz,getQuizSolved,putKey } from '~~/action/action'
 import { notification } from "~~/utils/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 const { connector } = getAccount(wagmiConfig)
+
+
+
+
 const convertBigIntToEther = (bigIntValue: any) => {
   // Format the BigInt value to Ether (18 decimal places)
   const etherValue = formatUnits(bigIntValue, 18);
@@ -74,14 +78,25 @@ async function executeContractFunction(prompt: any) {
   console.log(result2)
   return result2
 }
-async function generateQuiz(){
-  
-}
+
 const Home: NextPage = () => {
   const { address: connectedAddress } = useAccount();
   const [prompt2, setPrompt2] = useState("")
   const [loading, setLoading] = useState(false)
   const [result2, setResult2] = useState("")
+  const [allQuiz, setAllQuiz] = useState([])
+  const [allQuizSolved, setAllQuizSolved] = useState([])
+  useEffect(() => {
+    const fetchData = async () => {
+      
+        const responseQuiz = await getQuiz();
+        setAllQuiz(responseQuiz)
+        const responseQuizSolved = await getQuizSolved();
+        setAllQuizSolved(responseQuizSolved)
+    };
+  
+    fetchData();
+  }, []);
   return (
     <>
       <div className="flex items-center flex-col flex-grow pt-10">
@@ -112,9 +127,10 @@ const Home: NextPage = () => {
                   setLoading(true);
                   setResult2("")
                   try{
-                    const pa = await executeContractFunction(prompt2);
-                    await put({address:connectedAddress,prompt:prompt2,answer:pa},"quiz")
-                    setResult2(pa as any)
+                    const pa = await generateQuiz(prompt2);
+                    console.log(JSON.parse(pa).answer)
+                    await put({address:connectedAddress,prompt:prompt2,answer:JSON.parse(pa).answer},"quiz")
+                    setResult2(JSON.parse(pa).answer)
                   setLoading(false);
                   }catch(e){
                     notification.error((e as any).message)
@@ -145,34 +161,22 @@ const Home: NextPage = () => {
             <span className="badge p-6 text-lg">Quiz that you've solved: 0/10</span>
           </div>
           <div className="flex flex-wrap justify-center gap-4">
-
-            <div className="card w-64 p-4 border border-gray-300 bg-sky-100">
+{allQuiz.map(a=><div className="card w-64 p-4 border border-gray-300 bg-sky-100">
               <h2 className="text-lg font-bold mb-2 text-center text-black bg-blue-500 p-1 rounded">
-                <code>This is a block with a dark blue background and border radius.</code>
+                {/* @ts-ignore */}
+                <code>{a.answer}</code>
               </h2>
+              {/* @ts-ignore */}
+              {connectedAddress!==a.address && <>
               <input type="text" placeholder="Enter your answer" className="mb-2 border-2 border-gray-300 bg-white h-10 px-5 pr-16 rounded-lg text-sm focus:outline-none text-black" />
               <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                 Submit
               </button>
-            </div>
-            <div className="card w-64 h-48 p-4 border border-gray-300 bg-sky-100">
-              <h2 className="text-lg font-bold mb-2 text-center text-black bg-blue-500 p-1 rounded">
-                <code>Card 2</code>
-              </h2>
-              <input type="text" placeholder="Enter your answer" className="mb-2 border-2 border-gray-300 bg-white h-10 px-5 pr-16 rounded-lg text-sm focus:outline-none text-black" />
-              <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Submit
-              </button>
-            </div>
-            <div className="card w-64 h-48 p-4 border border-gray-300 bg-sky-100">
-              <h2 className="text-lg font-bold mb-2 text-center text-black bg-blue-500 p-1 rounded">
-                <code>Card 3</code>
-              </h2>
-              <input type="text" placeholder="Enter your answer" className="mb-2 border-2 border-gray-300 bg-white h-10 px-5 pr-16 rounded-lg text-sm focus:outline-none text-black" />
-              <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Submit
-              </button>
-            </div>
+              </>}
+              
+            </div>)}
+            
+            
           </div>
         </div>
       </div>
