@@ -4,17 +4,47 @@ import type { NextPage } from "next";
 import { useAccount } from "wagmi";
 import { Address } from "~~/components/scaffold-eth";
 import { abi } from '~~/abi/abi'
-import { useState,useEffect } from "react"
+import { useState, useEffect } from "react"
 import { formatUnits } from 'viem';
-import { getAccount,simulateContract, writeContract, http, createConfig, readContract, getTransactionConfirmations } from '@wagmi/core'
+import { getAccount, simulateContract, writeContract, readContract, getTransactionConfirmations } from '@wagmi/core'
 import { sepolia } from '@wagmi/core/chains'
 import { parseEther } from 'viem'
-import { put,generateQuiz,getQuiz,getQuizSolved,putKey } from '~~/action/action'
+import { put, generateQuiz, getQuiz, getQuizSolved, saveData, getData } from '~~/action/action'
 import { notification } from "~~/utils/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
+import * as use from '@tensorflow-models/universal-sentence-encoder';
+import * as tf from '@tensorflow/tfjs';
+
+// Sample sentences
+
 const { connector } = getAccount(wagmiConfig)
 
-
+async function calculateSimilarity(sentences:any) {
+  // Load the Universal Sentence Encoder model
+  const model = await use.load();
+  
+  // Get sentence embeddings
+  const embeddings = await model.embed(sentences);
+  
+  // Convert embeddings to array
+  const embArray1 = embeddings.arraySync()[0];
+  const embArray2 = embeddings.arraySync()[1];
+  
+  // Function to calculate cosine similarity
+  //@ts-ignore
+  function cosineSimilarity(vecA, vecB) {
+    const dotProduct = tf.dot(vecA, vecB).dataSync();
+    const magnitudeA = tf.norm(vecA).dataSync();
+    const magnitudeB = tf.norm(vecB).dataSync();
+    //@ts-ignore
+    return dotProduct / (magnitudeA * magnitudeB);
+  }
+  
+  // Calculate cosine similarity
+  const similarity = cosineSimilarity(tf.tensor(embArray1), tf.tensor(embArray2));
+  
+  return similarity;
+}
 
 
 const convertBigIntToEther = (bigIntValue: any) => {
@@ -37,7 +67,7 @@ async function executeContractFunction(prompt: any) {
     functionName: 'calculateAIResult',
     args: [
       15,
-      `{"instruction":"You are a jeopardy quiz generator people will input a question and you will be given the answer, but hide the obvious answer for example the question would be 'Who is vitalik?' instead of answering 'vitalik is crypto entrepreneur' you answer with 'he is the creator of ethereum'","input":"${prompt}"}`
+     prompt
     ],
     value: parseEther(convertBigIntToEther(result)),
     connector
@@ -59,11 +89,11 @@ async function executeContractFunction(prompt: any) {
     address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
     abi,
     functionName: 'prompts',
-    args: [15, `{"instruction":"You are a jeopardy quiz generator people will input a question and you will be given the answer, but hide the obvious answer for example the question would be 'Who is vitalik?' instead of answering 'vitalik is crypto entrepreneur' you answer with 'he is the creator of ethereum'","input":"${prompt}"}`],
+    args: [15, prompt],
     chainId: sepolia.id,
   })
-  console.log("result2",result2)
-  while((result2 as string).length===0){
+  console.log("result2", result2)
+  while ((result2 as string).length === 0) {
     result2 = await readContract(wagmiConfig, {
       address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
       abi,
@@ -71,10 +101,10 @@ async function executeContractFunction(prompt: any) {
       args: [15, prompt],
       chainId: sepolia.id,
     })
-    console.log("result2",result2)
-  await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log("result2", result2)
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
-  
+
   console.log(result2)
   return result2
 }
@@ -86,15 +116,28 @@ const Home: NextPage = () => {
   const [result2, setResult2] = useState("")
   const [allQuiz, setAllQuiz] = useState([])
   const [allQuizSolved, setAllQuizSolved] = useState([])
+  const [answers, setAnswers] = useState({})
+  const handleInputChange = (id:any, value:any) => {
+    setAnswers({
+      ...answers,
+      [id]: value,
+    });
+  };
+
+  const handleSubmit = (event:any) => {
+    event.preventDefault();
+    // Process the answers here
+    console.log(answers);
+  };
   useEffect(() => {
     const fetchData = async () => {
-      
-        const responseQuiz = await getQuiz();
-        setAllQuiz(responseQuiz)
-        const responseQuizSolved = await getQuizSolved();
-        setAllQuizSolved(responseQuizSolved)
+
+      const responseQuiz = await getData("quiz");
+      setAllQuiz(responseQuiz)
+      const responseQuizSolved = await getData("quiz-solved");
+      setAllQuizSolved(responseQuizSolved)
     };
-  
+
     fetchData();
   }, []);
   return (
@@ -106,6 +149,7 @@ const Home: NextPage = () => {
             <span className="block text-4xl font-bold">Jeopardy</span>
 
           </h1>
+
 
 
           <div className="flex justify-center items-center space-x-2 flex-col sm:flex-row">
@@ -126,18 +170,23 @@ const Home: NextPage = () => {
                 onClick={async () => {
                   setLoading(true);
                   setResult2("")
-                  try{
+                  try {
                     const pa = await generateQuiz(prompt2);
                     console.log(JSON.parse(pa).answer)
-                    await put({address:connectedAddress,prompt:prompt2,answer:JSON.parse(pa).answer},"quiz")
+                    await saveData({ address: connectedAddress, prompt: prompt2, answer: JSON.parse(pa).answer }, "quiz")
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    const getAllQuiz = await getData("quiz")
+                    const getAllQuizSolved = await getData("quiz-solved")
+                    setAllQuiz(getAllQuiz)
+                    setAllQuizSolved(getAllQuizSolved)
                     setResult2(JSON.parse(pa).answer)
-                  setLoading(false);
-                  }catch(e){
+                    setLoading(false);
+                  } catch (e) {
                     notification.error((e as any).message)
                     setLoading(false);
                   }
-                  
-                  
+
+
                 }}
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
                 {loading ? <div className="flex justify-center">
@@ -158,25 +207,83 @@ const Home: NextPage = () => {
 
         <div className="flex-grow bg-base-300 w-full mt-16 px-8 py-12">
           <div className="flex justify-center mb-5">
-            <span className="badge p-6 text-lg">Quiz that you've solved: 0/10</span>
+            {/* @ts-ignore */}
+            <div className="flex flex-col items-center">
+              {/* @ts-ignore */}
+              <span className="badge p-6 text-lg">Quiz that you've solved: {allQuizSolved.filter(quiz => quiz.address === connectedAddress).length}/{allQuiz.filter(quiz => quiz.address !== connectedAddress).length}</span>
+              <button
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const quizData = await getData("quiz");
+                    setAllQuiz(quizData);
+                    const quizDataSolved = await getData("quiz-solved");
+                    setAllQuizSolved(quizDataSolved);
+                    setLoading(false);
+                  } catch (error) {
+                    console.error("Failed to fetch quiz data:", error);
+                    setLoading(false);
+                  }
+                }}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4 mb-4"
+              >
+                {loading ? "Loading..." : "Refresh Quiz"}
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap justify-center gap-4">
-{allQuiz.map(a=><div className="card w-64 p-4 border border-gray-300 bg-sky-100">
+            {/* @ts-ignore */}
+            {allQuiz.map(a => <div key={a._id} className="card w-64 p-4 border border-gray-300 bg-sky-100">
               <h2 className="text-lg font-bold mb-2 text-center text-black bg-blue-500 p-1 rounded">
                 {/* @ts-ignore */}
                 <code>{a.answer}</code>
               </h2>
               {/* @ts-ignore */}
-              {connectedAddress!==a.address && <>
-              <input type="text" placeholder="Enter your answer" className="mb-2 border-2 border-gray-300 bg-white h-10 px-5 pr-16 rounded-lg text-sm focus:outline-none text-black" />
-              <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Submit
-              </button>
+              {(connectedAddress !== a.address || !allQuizSolved.some(quizSolved => quizSolved.address === connectedAddress)) && <>
+                {/* @ts-ignore */}
+                <input value={answers[a._id] || ''}   onChange={(e) => handleInputChange(a._id, e.target.value)}
+                  disabled={loading}
+                  type="text"
+                  placeholder="Enter your answer"
+                  className="mb-2 border-2 border-gray-300 bg-white h-10 px-5 pr-16 rounded-lg text-sm focus:outline-none text-black"
+                  
+
+                />
+                <button disabled={loading}
+                  onClick={async () => {
+                    //@ts-ignore
+                    const what = await generateQuiz(answers[a._id])
+                    //@ts-ignore
+                    console.log(answers[a._id])
+                    console.log(JSON.parse(what).answer)
+                    //@ts-ignore
+                    console.log(a.answer)
+                    //@ts-ignore
+                    const near=await calculateSimilarity([JSON.parse(what).answer,a.answer])
+                    // const near=cosineSimilarityOfStrings("It is a bear species native to south central China","It is a bear species native to south central China")
+                    console.log("near",near)
+                    
+                  }}
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                  {loading ? <div className="flex justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" className="lds-rolling">
+                      <circle cx="50" cy="50" fill="none" stroke="#fff" strokeWidth="10" r="35" strokeDasharray="164.93361431346415 56.97787143782138" transform="rotate(275.845 50 50)">
+                        <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 50 50;360 50 50" keyTimes="0;1"></animateTransform>
+                      </circle>
+                    </svg>
+                  </div> : "Submit"}
+                </button>
               </>}
-              
+              {/* @ts-ignore */}
+              {allQuizSolved.some(quizSolved => quizSolved.address === connectedAddress) && (
+                <div className="text-center text-green-500">
+                  You have already solved this quiz!
+                </div>
+              )}
+
             </div>)}
-            
-            
+
+
           </div>
         </div>
       </div>
