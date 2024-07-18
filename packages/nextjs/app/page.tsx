@@ -122,7 +122,9 @@ const Home: NextPage = () => {
   const [result2, setResult2] = useState("")
   const [allQuiz, setAllQuiz] = useState([])
   const [allQuizSolved, setAllQuizSolved] = useState([])
+  const [allQuizHash, setAllQuizHash] = useState([])
   const [answers, setAnswers] = useState({})
+  const [changeQuestion, setChangeQuestion] = useState({})
   const handleInputChange = (id: any, value: any) => {
     setAnswers({
       ...answers,
@@ -133,11 +135,13 @@ const Home: NextPage = () => {
   
   useEffect(() => {
     const fetchData = async () => {
-
+//@ts-ignore
       const responseQuiz = await getData("quiz");
       setAllQuiz(responseQuiz)
       const responseQuizSolved = await getData("quiz-solved");
       setAllQuizSolved(responseQuizSolved)
+      const responseQuizHash = await getData("quiz-hash");
+      setAllQuizHash(responseQuizHash)
     };
 
     fetchData();
@@ -147,9 +151,9 @@ const Home: NextPage = () => {
       <div className="flex items-center flex-col flex-grow pt-10">
         <div className="px-5">
           <h1 className="text-center">
-            <span className="block text-2xl mb-2">Using OpenLM Chat (7B)*</span>
+          <span className="block text-4xl font-bold">ORA AI</span>
             <span className="block text-4xl font-bold">Jeopardy</span>
-
+            <span className="block text-2xl mb-2">Using LlaMA 3 (8B)</span>
           </h1>
 
 
@@ -179,8 +183,10 @@ const Home: NextPage = () => {
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     const getAllQuiz = await getData("quiz")
                     const getAllQuizSolved = await getData("quiz-solved")
+                    const getAllQuizHash = await getData("quiz-hash")
                     setAllQuiz(getAllQuiz)
                     setAllQuizSolved(getAllQuizSolved)
+                    setAllQuizHash(getAllQuizHash)
                     setResult2(JSON.parse(pa).answer)
                     setLoading(false);
                   } catch (e) {
@@ -200,22 +206,7 @@ const Home: NextPage = () => {
                 </div> : "Create Quiz Using AI Now"}
 
               </button>
-              <button
-                onClick={async() => {
-                  const result = await readContract(wagmiConfig, {
-                    address: process.env.NEXT_PUBLIC_ORA_MANTA as string,
-                    abi,
-                    functionName: 'estimateFee',
-                    args: [11],
-                    chainId: mantaSepoliaTestnet.id,
-                  })
-
-                  console.log(convertBigIntToEther(result))
-                }}
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
-              >
-                Click Me
-              </button>
+              
               {result2.length > 0 && <div className="bg-blue-700 rounded-lg p-4 mt-2">
                 <p className="text-white">{result2}</p>
               </div>}
@@ -237,6 +228,8 @@ const Home: NextPage = () => {
                     setAllQuiz(quizData);
                     const quizDataSolved = await getData("quiz-solved");
                     setAllQuizSolved(quizDataSolved);
+                    const getAllQuizHash = await getData("quiz-hash")
+                    setAllQuizHash(getAllQuizHash);
                     setLoading(false);
                   } catch (error) {
                     console.error("Failed to fetch quiz data:", error);
@@ -257,12 +250,12 @@ const Home: NextPage = () => {
                 <code>{a.answer}</code>
               </h2>
               {/* @ts-ignore */}
-              {(connectedAddress !== a.address && !allQuizSolved.some(quizSolved => quizSolved.quizId === a._id)) && <>
+              {(connectedAddress !== a.address && !allQuizSolved.some(quizSolved => quizSolved.quizId === a._id)&& !allQuizHash.some(quizSolved => quizSolved.quizId === a._id) || changeQuestion[a._id])  && <>
                 {/* @ts-ignore */}
                 <input value={answers[a._id] || ''} onChange={(e) => handleInputChange(a._id, e.target.value)}
                   disabled={loading}
                   type="text"
-                  placeholder="Enter your answer"
+                  placeholder="Enter your question"
                   className="mb-2 border-2 border-gray-300 bg-white h-10 px-5 pr-16 rounded-lg text-sm focus:outline-none text-black"
 
 
@@ -273,17 +266,20 @@ const Home: NextPage = () => {
                     //@ts-ignore
                     const hash = await executeContractFunction(answers[a._id])
                     //@ts-ignore
+                    await saveData({ quizSolved:false,hash,address:connectedAddress,quizId: a._id,prompt:answers[a._id] }, "quiz-hash")
+                                //@ts-ignore
+                    setChangeQuestion({...changeQuestion,[a._id]:false})
                     
                     // const near = await calculateSimilarity([what, a.answer])
                     // if (near > 0.5) {
                     //   //@ts-ignore
                     //   saveData({ question:answers[a._id],address: connectedAddress, answer:what as string, similarity: near, quizId: a._id }, "quiz-solved")
-                    //   notification.success(
-                    //     "Congrats you solved the quiz",
-                    //     {
-                    //       duration: 5000,
-                    //     },
-                    //   );
+                      notification.success(
+                        "The transaction is still in the queue please click check button, to check whether you solve the question or no",
+                        {
+                          duration: 5000,
+                        },
+                      );
                     // }else{
                     //   notification.error(
                     //     "Sorry, please try again thats not the answer",
@@ -296,8 +292,10 @@ const Home: NextPage = () => {
                     setAllQuiz(responseQuiz)
                     const responseQuizSolved = await getData("quiz-solved");
                     setAllQuizSolved(responseQuizSolved)
+                    const responseQuizHash = await getData("quiz-hash");
+                    setAllQuizHash(responseQuizHash)
                     // const near=cosineSimilarityOfStrings("It is a bear species native to south central China","It is a bear species native to south central China")
-                    console.log("near", near)
+         
                     setLoading(false)
 
                   }}
@@ -312,7 +310,29 @@ const Home: NextPage = () => {
                 </button>
               </>}
               {/* @ts-ignore */}
-              {allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)  && (
+              {(!allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress) && allQuizHash.some(quizSolved => quizSolved.quizId === a._id)) || !changeQuestion[a._id]  && (
+                <div >
+                  <div className="text-center text-green-500">
+                  <button    
+                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                  >
+                    Check
+                  </button>
+                </div>
+                <div className="text-center text-green-500 my-2">
+                  <button    
+                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                    //@ts-ignore
+                    onClick={()=>setChangeQuestion({...changeQuestion,[a._id]:true})}
+                  >
+                    Change the question
+                  </button>
+                </div>
+                </div>
+              )}
+              
+              {/* @ts-ignore */}
+              {allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress && allQuizHash.some(quizSolved => quizSolved.quizId === a._id))  && (
                 <div className="text-center text-green-500">
                   You have already solved this quiz!
                 <div className="text-center text-blue-500">

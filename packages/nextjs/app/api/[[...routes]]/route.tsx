@@ -5,8 +5,8 @@ import { devtools } from 'frog/dev'
 // import { neynar } from 'frog/hubs'
 import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
-import ky from 'ky'
-import { getData } from '../../action/action'
+
+import { getData } from '../../../action/action'
 //@ts-ignore
 const app = new Frog({
   //@ts-ignore
