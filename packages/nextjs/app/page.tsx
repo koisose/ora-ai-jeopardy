@@ -9,7 +9,7 @@ import { formatUnits } from 'viem';
 import { getAccount, simulateContract, writeContract, readContract, getTransactionConfirmations } from '@wagmi/core'
 import { mantaSepoliaTestnet } from '@wagmi/core/chains'
 import { parseEther } from 'viem'
-import {  generateQuiz, saveData, getData,updateDataById,getDataById,getDataByColumn } from '~~/action/action'
+import { generateQuiz, saveData, getData, updateDataById,  getDataByColumn } from '~~/action/action'
 import { notification } from "~~/utils/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 import * as use from '@tensorflow-models/universal-sentence-encoder';
@@ -132,10 +132,10 @@ const Home: NextPage = () => {
     });
   };
 
-  
+
   useEffect(() => {
     const fetchData = async () => {
-//@ts-ignore
+      //@ts-ignore
       const responseQuiz = await getData("quiz");
       setAllQuiz(responseQuiz)
       const responseQuizSolved = await getData("quiz-solved");
@@ -151,7 +151,7 @@ const Home: NextPage = () => {
       <div className="flex items-center flex-col flex-grow pt-10">
         <div className="px-5">
           <h1 className="text-center">
-          <span className="block text-4xl font-bold">ORA AI</span>
+            <span className="block text-4xl font-bold">ORA AI</span>
             <span className="block text-4xl font-bold">Jeopardy</span>
             <span className="block text-2xl mb-2">Using LlaMA 3 (8B)</span>
           </h1>
@@ -205,7 +205,7 @@ const Home: NextPage = () => {
                 </div> : "Create Quiz Using AI Now"}
 
               </button>
-              
+
               {result2.length > 0 && <div className="bg-blue-700 rounded-lg p-4 mt-2">
                 <p className="text-white">{result2}</p>
               </div>}
@@ -249,7 +249,7 @@ const Home: NextPage = () => {
                 <code>{a.answer}</code>
               </h2>
               {/* @ts-ignore */}
-              {(connectedAddress !== a.address && !allQuizSolved.some(quizSolved => quizSolved.quizId === a._id)&& !allQuizHash.some(quizSolved => quizSolved.quizId === a._id) || changeQuestion[a._id])  && <>
+              {(connectedAddress !== a.address && !allQuizSolved.some(quizSolved => quizSolved.quizId === a._id) && !allQuizHash.some(quizSolved => quizSolved.quizId === a._id) || changeQuestion[a._id]) && <>
                 {/* @ts-ignore */}
                 <input value={answers[a._id] || ''} onChange={(e) => handleInputChange(a._id, e.target.value)}
                   disabled={loading}
@@ -266,29 +266,29 @@ const Home: NextPage = () => {
                     const hash = await executeContractFunction(answers[a._id])
                     // const hash="pompom"
                     //@ts-ignore
-                    const isExist=await getDataByColumn("quiz-hash",{address:connectedAddress,quizId: a._id});
-                    if(isExist.length>0){
+                    const isExist = await getDataByColumn("quiz-hash", { address: connectedAddress, quizId: a._id });
+                    if (isExist.length > 0) {
                       //@ts-ignore
-                      await updateDataById("quiz-hash",isExist[0]._id,{ quizSolved:false,hash,address:connectedAddress,quizId: a._id,prompt:answers[a._id] })
-                    }else{
+                      await updateDataById("quiz-hash", isExist[0]._id, { quizSolved: false, hash, address: connectedAddress, quizId: a._id, prompt: answers[a._id] })
+                    } else {
                       //@ts-ignore
-                      await saveData({ quizSolved:false,hash,address:connectedAddress,quizId: a._id,prompt:answers[a._id] }, "quiz-hash")
+                      await saveData({ quizSolved: false, hash, address: connectedAddress, quizId: a._id, prompt: answers[a._id] }, "quiz-hash")
                     }
                     //@ts-ignore
-                    
-                                //@ts-ignore
-                    setChangeQuestion({...changeQuestion,[a._id]:false})
-                    
+
+                    //@ts-ignore
+                    setChangeQuestion({ ...changeQuestion, [a._id]: false })
+
                     // const near = await calculateSimilarity([what, a.answer])
                     // if (near > 0.5) {
                     //   //@ts-ignore
                     //   saveData({ question:answers[a._id],address: connectedAddress, answer:what as string, similarity: near, quizId: a._id }, "quiz-solved")
-                      notification.success(
-                        "The transaction is still in the queue please click check button, to check whether you solve the question or no",
-                        {
-                          duration: 5000,
-                        },
-                      );
+                    notification.success(
+                      "The transaction is still in the queue please click check button, to check whether you solve the question or no",
+                      {
+                        duration: 5000,
+                      },
+                    );
                     // }else{
                     //   notification.error(
                     //     "Sorry, please try again thats not the answer",
@@ -304,7 +304,7 @@ const Home: NextPage = () => {
                     const responseQuizHash = await getData("quiz-hash");
                     setAllQuizHash(responseQuizHash)
                     // const near=cosineSimilarityOfStrings("It is a bear species native to south central China","It is a bear species native to south central China")
-         
+
                     setLoading(false)
 
                   }}
@@ -319,77 +319,122 @@ const Home: NextPage = () => {
                 </button>
               </>}
               {/* @ts-ignore */}
-              {(!allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress) && allQuizHash.some(quizSolved => quizSolved.quizId === a._id&& quizSolved.address === connectedAddress)&& !changeQuestion[a._id])   && (
+              {(!allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress) && allQuizHash.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress) && !changeQuestion[a._id]) && (
                 <div >
+                  <div className="flex justify-center items-center mb-4 font-bold text-black">
+                    your question:
+                  </div>
+                  <div className="flex justify-center items-center mb-4">
+                    <span className="bg-purple-600 text-white text-sm font-bold mr-2 px-4 py-2 rounded-full shadow-lg">
+                      {/* @ts-ignore */}
+              {allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].prompt}
+                    </span>
+                  </div>
                   <div className="text-center text-green-500">
-                  <button    
-                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-                    disabled={loading}
-                    onClick={async()=>{
-                      setLoading(true)
-                      //@ts-ignore
-  const hash = allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].hash
-  const transaction = await getTransactionConfirmations(wagmiConfig, {
-      chainId: mantaSepoliaTestnet.id,
-      hash,
-    })
-    if(Number(transaction) > 0){
-      let result2 = await readContract(wagmiConfig, {
-        address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
-        abi,
-        functionName: 'prompts',
-        args: [15, prompt],
-        chainId: mantaSepoliaTestnet.id,
-      })
-        //@ts-ignore
-      const near = await calculateSimilarity([result2, a.answer])
+                    
+                    <button
+                      className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                      disabled={loading}
+                      onClick={async () => {
+                        setLoading(true)
+                        //@ts-ignore
+                        const hash = allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].hash
+                        const transaction = await getTransactionConfirmations(wagmiConfig, {
+                          chainId: mantaSepoliaTestnet.id,
+                          hash,
+                        })
+                        if (Number(transaction) > 0) {
+                          const result2 = await readContract(wagmiConfig, {
+                            address: process.env.NEXT_PUBLIC_ORA_MANTA as string,
+                            abi,
+                            functionName: 'prompts',
+                            //@ts-ignore
+                            args: [11, allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].prompt],
+                            chainId: mantaSepoliaTestnet.id,
+                          })
+                          // console.log(result2)
+                          //@ts-ignore
+                          const near = await calculateSimilarity([result2, a.answer])
                           if (near > 0.5) {
-                      //@ts-ignore
-                      await saveData({ question:answers[a._id],address: connectedAddress, answer:what as string, similarity: near, quizId: a._id }, "quiz-solved")
-                    }
-    }else{
-      notification.error("transaction still not finalized please wait a lil bit")
-    }
-  
-  
-                      setLoading(false)
-                    }}
-                  >
+                            //@ts-ignore
+                            await saveData({ question: answers[a._id], address: connectedAddress, answer: result2, similarity: near, quizId: a._id }, "quiz-solved")
+                            const responseQuiz = await getData("quiz");
+                            setAllQuiz(responseQuiz)
+                            const responseQuizSolved = await getData("quiz-solved");
+                            setAllQuizSolved(responseQuizSolved)
+                            const responseQuizHash = await getData("quiz-hash");
+                            setAllQuizHash(responseQuizHash)
+                            notification.success("Congrats 🎉 You succesfully solved the quiz", { duration: 10000 })
 
-                    {loading ? <div className="flex justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" className="lds-rolling">
-                      <circle cx="50" cy="50" fill="none" stroke="#fff" strokeWidth="10" r="35" strokeDasharray="164.93361431346415 56.97787143782138" transform="rotate(275.845 50 50)">
-                        <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 50 50;360 50 50" keyTimes="0;1"></animateTransform>
-                      </circle>
-                    </svg>
-                  </div> : "Check"}
-                  </button>
-                </div>
-                <div className="text-center text-green-500 my-2">
-                  <button    
-                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                    disabled={loading}
-                    //@ts-ignore
-                    onClick={()=>setChangeQuestion({...changeQuestion,[a._id]:true})}
-                  >
-                    Change the question
-                  </button>
-                </div>
+                          }else{
+                            notification.error("Sorry, the question doesn't match please try again", { duration: 10000 })
+                          }
+                        } else {
+                          notification.error("Sorry, the transaction is still not finalized.", { duration: 10000 })
+                        }
+
+
+                        setLoading(false)
+                      }}
+                    >
+
+                      {loading ? <div className="flex justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" className="lds-rolling">
+                          <circle cx="50" cy="50" fill="none" stroke="#fff" strokeWidth="10" r="35" strokeDasharray="164.93361431346415 56.97787143782138" transform="rotate(275.845 50 50)">
+                            <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 50 50;360 50 50" keyTimes="0;1"></animateTransform>
+                          </circle>
+                        </svg>
+                      </div> : "Check"}
+                    </button>
+                  </div>
+                  <div className="text-center text-green-500 my-2">
+                    <button
+                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                      disabled={loading}
+                      //@ts-ignore
+                      onClick={() => setChangeQuestion({ ...changeQuestion, [a._id]: true })}
+                    >
+                      Change the question
+                    </button>
+                  </div>
                 </div>
               )}
-              
+
               {/* @ts-ignore */}
-              {allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress && allQuizHash.some(quizSolved => quizSolved.quizId === a._id))  && (
+              {allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress && allQuizHash.some(quizSolved => quizSolved.quizId === a._id)) && (
                 <div className="text-center text-green-500">
-                  You have already solved this quiz!
-                <div className="text-center text-blue-500">
-                  {/* @ts-ignore */}
-                  <p>Similarity Score: {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id)[0].similarity}</p>
-                  {/* @ts-ignore */}
-                  <p>Your Question: {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id)[0].question}</p>
-                  {/* @ts-ignore */}
-                  <p>AI Answer: {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id)[0].answer}</p>
-                </div>
+                  <span className="bg-green-500 text-white font-bold py-1 px-3 rounded-full inline-block text-xs">🎉 You have already solved this quiz! 🎉</span>
+                  <div className="text-center text-blue-500">
+                  <div className="flex justify-center items-center mb-4 font-bold text-black">
+                    Your question:
+                  </div>
+                  <div className="flex justify-center items-center mb-4">
+                    <span className="bg-purple-600 text-white text-sm font-bold mr-2 px-4 py-2 rounded-full shadow-lg">
+                      {/* @ts-ignore */}
+              {allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].prompt}
+                    </span>
+                  </div>
+                  <div className="flex justify-center items-center mb-4 font-bold text-black">
+                  Similarity Score:
+                  </div>
+                  <div className="flex justify-center items-center mb-4">
+                    <span className="bg-purple-600 text-white text-sm font-bold mr-2 px-4 py-2 rounded-full shadow-lg">
+                      {/* @ts-ignore */}
+                      {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].similarity}
+                    </span>
+                  </div>
+                  <div className="flex justify-center items-center mb-4 font-bold text-black">
+                  ORA AI LLama 3 answer:
+                  </div>
+                  <div className="flex justify-center items-center mb-4">
+                    <span className="bg-purple-600 text-white text-sm font-bold mr-2 px-4 py-2 rounded-full shadow-lg">
+                      {/* @ts-ignore */}
+                      {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].answer.substring(0, 100)}...
+                    </span>
+                  </div>
+                    
+                    
+                  </div>
                 </div>
               )}
 

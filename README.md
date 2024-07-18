@@ -5,6 +5,10 @@ https://www.youtube.com/watch?v=7nv6Si49XBo
 # Web demo
 https://nextjs-five-tau-89.vercel.app/
 
+# Sentence similiarity technique
+
+BERT for Sentence Embeddings
+
 # 🏗 Scaffold-ETH 2
 
 <h4 align="center">

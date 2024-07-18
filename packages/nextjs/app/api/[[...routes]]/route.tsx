@@ -33,16 +33,18 @@ app
         </div>
       ),
       intents: [
+    
         <Button action="/play">
           Play
         </Button>,
+    
         <Button.Redirect location="https://nextjs-five-tau-89.vercel.app">Create</Button.Redirect>
       ]
     })
   })
 app.frame('/play', async (c) => {
-  const { buttonValue, inputText, deriveState } = c
-  const fruit = inputText || buttonValue
+  const {  deriveState } = c
+  // const fruit = inputText || buttonValue
   const allQuiz = await getData("quiz")
   const state = deriveState(previousState => {
     //@ts-ignore
