@@ -7,7 +7,7 @@ import { abi } from '~~/abi/abi'
 import { useState, useEffect } from "react"
 import { formatUnits } from 'viem';
 import { getAccount, simulateContract, writeContract, readContract, getTransactionConfirmations } from '@wagmi/core'
-import { sepolia } from '@wagmi/core/chains'
+import { mantaSepoliaTestnet } from '@wagmi/core/chains'
 import { parseEther } from 'viem'
 import {  generateQuiz, saveData, getData } from '~~/action/action'
 import { notification } from "~~/utils/scaffold-eth";
@@ -54,19 +54,19 @@ const convertBigIntToEther = (bigIntValue: any) => {
 };
 async function executeContractFunction(prompt: any) {
   const result = await readContract(wagmiConfig, {
-    address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
+    address: process.env.NEXT_PUBLIC_ORA_MANTA as string,
     abi,
     functionName: 'estimateFee',
-    args: [15],
-    chainId: sepolia.id,
+    args: [11],
+    chainId: mantaSepoliaTestnet.id,
   })
   // return result
   const { request } = await simulateContract(wagmiConfig, {
     abi,
-    address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
+    address: process.env.NEXT_PUBLIC_ORA_MANTA as string,
     functionName: 'calculateAIResult',
     args: [
-      15,
+      11,
       prompt
     ],
     value: parseEther(convertBigIntToEther(result)),
@@ -74,44 +74,45 @@ async function executeContractFunction(prompt: any) {
   })
 
   const hash = await writeContract(wagmiConfig, request)
-  let transaction = await getTransactionConfirmations(wagmiConfig, {
-    chainId: sepolia.id,
-    hash,
-  })
-  while (Number(transaction) === 0) {
-    transaction = await getTransactionConfirmations(wagmiConfig, {
-      chainId: sepolia.id,
-      hash,
-    })
-    console.log("still waiting for transaction to be confirmed")
-  }
-  let result2 = await readContract(wagmiConfig, {
-    address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
-    abi,
-    functionName: 'prompts',
-    args: [15, prompt],
-    chainId: sepolia.id,
-  })
-  console.log("result2", result2)
-  let stop=0;
-  while ((result2 as string).length === 0) {
-    result2 = await readContract(wagmiConfig, {
-      address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
-      abi,
-      functionName: 'prompts',
-      args: [15, prompt],
-      chainId: sepolia.id,
-    })
-    stop+=1
-    if(stop===20){
-      break;
-    }
-    console.log("result2", result2)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
+  return hash
+  // let transaction = await getTransactionConfirmations(wagmiConfig, {
+  //   chainId: mantaSepoliaTestnet.id,
+  //   hash,
+  // })
+  // while (Number(transaction) === 0) {
+  //   transaction = await getTransactionConfirmations(wagmiConfig, {
+  //     chainId: mantaSepoliaTestnet.id,
+  //     hash,
+  //   })
+  //   console.log("still waiting for transaction to be confirmed")
+  // }
+  // let result2 = await readContract(wagmiConfig, {
+  //   address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
+  //   abi,
+  //   functionName: 'prompts',
+  //   args: [15, prompt],
+  //   chainId: mantaSepoliaTestnet.id,
+  // })
+  // console.log("result2", result2)
+  // let stop=0;
+  // while ((result2 as string).length === 0) {
+  //   result2 = await readContract(wagmiConfig, {
+  //     address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
+  //     abi,
+  //     functionName: 'prompts',
+  //     args: [15, prompt],
+  //     chainId: mantaSepoliaTestnet.id,
+  //   })
+  //   stop+=1
+  //   if(stop===20){
+  //     break;
+  //   }
+  //   console.log("result2", result2)
+  //   await new Promise(resolve => setTimeout(resolve, 2000));
+  // }
 
-  console.log(result2)
-  return result2
+  // console.log(result2)
+  // return result2
 }
 
 const Home: NextPage = () => {
@@ -199,6 +200,22 @@ const Home: NextPage = () => {
                 </div> : "Create Quiz Using AI Now"}
 
               </button>
+              <button
+                onClick={async() => {
+                  const result = await readContract(wagmiConfig, {
+                    address: process.env.NEXT_PUBLIC_ORA_MANTA as string,
+                    abi,
+                    functionName: 'estimateFee',
+                    args: [11],
+                    chainId: mantaSepoliaTestnet.id,
+                  })
+
+                  console.log(convertBigIntToEther(result))
+                }}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
+              >
+                Click Me
+              </button>
               {result2.length > 0 && <div className="bg-blue-700 rounded-lg p-4 mt-2">
                 <p className="text-white">{result2}</p>
               </div>}
@@ -254,31 +271,27 @@ const Home: NextPage = () => {
                   onClick={async () => {
                     setLoading(true)
                     //@ts-ignore
-                    const what = await executeContractFunction(answers[a._id])
+                    const hash = await executeContractFunction(answers[a._id])
                     //@ts-ignore
-                    console.log(answers[a._id])
-                    console.log(what)
-                    //@ts-ignore
-                    console.log(a.answer)
-                    //@ts-ignore
-                    const near = await calculateSimilarity([what, a.answer])
-                    if (near > 0.5) {
-                      //@ts-ignore
-                      saveData({ question:answers[a._id],address: connectedAddress, answer:what as string, similarity: near, quizId: a._id }, "quiz-solved")
-                      notification.success(
-                        "Congrats you solved the quiz",
-                        {
-                          duration: 5000,
-                        },
-                      );
-                    }else{
-                      notification.error(
-                        "Sorry, please try again thats not the answer",
-                        {
-                          duration: 5000,
-                        },
-                      );
-                    }
+                    
+                    // const near = await calculateSimilarity([what, a.answer])
+                    // if (near > 0.5) {
+                    //   //@ts-ignore
+                    //   saveData({ question:answers[a._id],address: connectedAddress, answer:what as string, similarity: near, quizId: a._id }, "quiz-solved")
+                    //   notification.success(
+                    //     "Congrats you solved the quiz",
+                    //     {
+                    //       duration: 5000,
+                    //     },
+                    //   );
+                    // }else{
+                    //   notification.error(
+                    //     "Sorry, please try again thats not the answer",
+                    //     {
+                    //       duration: 5000,
+                    //     },
+                    //   );
+                    // }
                     const responseQuiz = await getData("quiz");
                     setAllQuiz(responseQuiz)
                     const responseQuizSolved = await getData("quiz-solved");
