@@ -9,7 +9,7 @@ import { formatUnits } from 'viem';
 import { getAccount, simulateContract, writeContract, readContract, getTransactionConfirmations } from '@wagmi/core'
 import { mantaSepoliaTestnet } from '@wagmi/core/chains'
 import { parseEther } from 'viem'
-import {  generateQuiz, saveData, getData } from '~~/action/action'
+import {  generateQuiz, saveData, getData,updateDataById,getDataById,getDataByColumn } from '~~/action/action'
 import { notification } from "~~/utils/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 import * as use from '@tensorflow-models/universal-sentence-encoder';
@@ -180,7 +180,6 @@ const Home: NextPage = () => {
                     const pa = await generateQuiz(prompt2);
                     console.log(JSON.parse(pa).answer)
                     await saveData({ address: connectedAddress, prompt: prompt2, answer: JSON.parse(pa).answer }, "quiz")
-                    await new Promise(resolve => setTimeout(resolve, 2000));
                     const getAllQuiz = await getData("quiz")
                     const getAllQuizSolved = await getData("quiz-solved")
                     const getAllQuizHash = await getData("quiz-hash")
@@ -265,8 +264,18 @@ const Home: NextPage = () => {
                     setLoading(true)
                     //@ts-ignore
                     const hash = await executeContractFunction(answers[a._id])
+                    // const hash="pompom"
                     //@ts-ignore
-                    await saveData({ quizSolved:false,hash,address:connectedAddress,quizId: a._id,prompt:answers[a._id] }, "quiz-hash")
+                    const isExist=await getDataByColumn("quiz-hash",{address:connectedAddress,quizId: a._id});
+                    if(isExist.length>0){
+                      //@ts-ignore
+                      await updateDataById("quiz-hash",isExist[0]._id,{ quizSolved:false,hash,address:connectedAddress,quizId: a._id,prompt:answers[a._id] })
+                    }else{
+                      //@ts-ignore
+                      await saveData({ quizSolved:false,hash,address:connectedAddress,quizId: a._id,prompt:answers[a._id] }, "quiz-hash")
+                    }
+                    //@ts-ignore
+                    
                                 //@ts-ignore
                     setChangeQuestion({...changeQuestion,[a._id]:false})
                     
@@ -310,18 +319,56 @@ const Home: NextPage = () => {
                 </button>
               </>}
               {/* @ts-ignore */}
-              {(!allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress) && allQuizHash.some(quizSolved => quizSolved.quizId === a._id)) || !changeQuestion[a._id]  && (
+              {(!allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress) && allQuizHash.some(quizSolved => quizSolved.quizId === a._id&& quizSolved.address === connectedAddress)&& !changeQuestion[a._id])   && (
                 <div >
                   <div className="text-center text-green-500">
                   <button    
                     className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                    disabled={loading}
+                    onClick={async()=>{
+                      setLoading(true)
+                      //@ts-ignore
+  const hash = allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].hash
+  const transaction = await getTransactionConfirmations(wagmiConfig, {
+      chainId: mantaSepoliaTestnet.id,
+      hash,
+    })
+    if(Number(transaction) > 0){
+      let result2 = await readContract(wagmiConfig, {
+        address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
+        abi,
+        functionName: 'prompts',
+        args: [15, prompt],
+        chainId: mantaSepoliaTestnet.id,
+      })
+        //@ts-ignore
+      const near = await calculateSimilarity([result2, a.answer])
+                          if (near > 0.5) {
+                      //@ts-ignore
+                      await saveData({ question:answers[a._id],address: connectedAddress, answer:what as string, similarity: near, quizId: a._id }, "quiz-solved")
+                    }
+    }else{
+      notification.error("transaction still not finalized please wait a lil bit")
+    }
+  
+  
+                      setLoading(false)
+                    }}
                   >
-                    Check
+
+                    {loading ? <div className="flex justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" className="lds-rolling">
+                      <circle cx="50" cy="50" fill="none" stroke="#fff" strokeWidth="10" r="35" strokeDasharray="164.93361431346415 56.97787143782138" transform="rotate(275.845 50 50)">
+                        <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 50 50;360 50 50" keyTimes="0;1"></animateTransform>
+                      </circle>
+                    </svg>
+                  </div> : "Check"}
                   </button>
                 </div>
                 <div className="text-center text-green-500 my-2">
                   <button    
                     className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                    disabled={loading}
                     //@ts-ignore
                     onClick={()=>setChangeQuestion({...changeQuestion,[a._id]:true})}
                   >

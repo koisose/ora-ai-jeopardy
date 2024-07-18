@@ -106,7 +106,66 @@ export async function getDataById(database: any, id: string) {
     console.log('Connection closed');
   }
 }
+export async function getDataByColumn(database: any, columnData: { [key: string]: any }) {
+  try {
+    await mongoose.connect(url);
+    console.log('Connected successfully to MongoDB');
 
+    let FlexibleModel;
+    try {
+      FlexibleModel = mongoose.model(database);
+    } catch {
+      const flexibleSchema = new mongoose.Schema({}, { strict: false });
+      FlexibleModel = mongoose.model(database, flexibleSchema);
+    }
+
+    // Retrieve documents by column name and value from the database
+    //@ts-ignore
+    const docs = await FlexibleModel.find(columnData).lean();
+
+    // Convert _id to string in each document
+    //@ts-ignore
+    const docsAsString = docs.map(doc => ({ ...doc, _id: doc._id.toString() }));
+    return docsAsString
+  } catch (err) {
+    console.error('Error:', err);
+  } finally {
+    mongoose.connection.close();  // Close the connection
+    console.log('Connection closed');
+  }
+}
+
+export async function updateDataById(database: any, id: string, data: any) {
+  try {
+    await mongoose.connect(url);
+    console.log('Connected successfully to MongoDB');
+
+    let FlexibleModel;
+    try {
+      FlexibleModel = mongoose.model(database);
+    } catch {
+      const flexibleSchema = new mongoose.Schema({}, { strict: false });
+      FlexibleModel = mongoose.model(database, flexibleSchema);
+    }
+
+    // Update document by id in the database
+    //@ts-ignore
+    const updatedDoc = await FlexibleModel.findByIdAndUpdate(new mongoose.Types.ObjectId(id), data, { new: true }).lean();
+
+    // Convert _id to string
+    if (updatedDoc) {
+      return { ...updatedDoc, _id: updatedDoc._id.toString() };
+    } else {
+      return null;
+    }
+  } catch (err) {
+    console.error('Error:', err);
+    return null;
+  } finally {
+    mongoose.connection.close();  // Close the connection
+    console.log('Connection closed');
+  }
+}
 export async function generateQuiz(prompt: string) {
   const API_KEY = process.env.GOOGLE_API_KEY as string; // Replace with your actual API key
 
