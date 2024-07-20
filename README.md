@@ -1,6 +1,6 @@
 # Video Demo
 
-https://www.youtube.com/watch?v=7nv6Si49XBo
+https://youtu.be/yXHeARMeNiI
 
 # Web demo
 https://nextjs-five-tau-89.vercel.app/
