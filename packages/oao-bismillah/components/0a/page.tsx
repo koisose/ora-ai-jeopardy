@@ -10,13 +10,14 @@ import { getAccount, simulateContract, writeContract, readContract, getTransacti
 import { mantaSepoliaTestnet } from '@wagmi/core/chains'
 import { parseEther } from 'viem'
 import { generateQuiz, saveData, getData, updateDataById,  getDataByColumn } from '~~/action/action'
+
 import { notification } from "~~/utils/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 import * as use from '@tensorflow-models/universal-sentence-encoder';
 import * as tf from '@tensorflow/tfjs';
 
 // Sample sentences
-
+//@ts-ignore
 const { connector } = getAccount(wagmiConfig)
 
 async function calculateSimilarity(sentences: any) {
@@ -53,6 +54,7 @@ const convertBigIntToEther = (bigIntValue: any) => {
   return etherValue;
 };
 async function executeContractFunction(prompt: any) {
+  //@ts-ignore
   const result = await readContract(wagmiConfig, {
     address: process.env.NEXT_PUBLIC_ORA_MANTA as string,
     abi,
@@ -61,6 +63,7 @@ async function executeContractFunction(prompt: any) {
     chainId: mantaSepoliaTestnet.id,
   })
   // return result
+  //@ts-ignore
   const { request } = await simulateContract(wagmiConfig, {
     abi,
     address: process.env.NEXT_PUBLIC_ORA_MANTA as string,
@@ -72,7 +75,7 @@ async function executeContractFunction(prompt: any) {
     value: parseEther(convertBigIntToEther(result)),
     connector
   })
-
+//@ts-ignore
   const hash = await writeContract(wagmiConfig, request)
   return hash
   // let transaction = await getTransactionConfirmations(wagmiConfig, {
@@ -205,6 +208,7 @@ const Home: NextPage = () => {
                 </div> : "Create Quiz Using AI Now"}
 
               </button>
+              
 
               {result2.length > 0 && <div className="bg-blue-700 rounded-lg p-4 mt-2">
                 <p className="text-white">{result2}</p>
@@ -339,11 +343,13 @@ const Home: NextPage = () => {
                         setLoading(true)
                         //@ts-ignore
                         const hash = allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].hash
+                        //@ts-ignore
                         const transaction = await getTransactionConfirmations(wagmiConfig, {
                           chainId: mantaSepoliaTestnet.id,
                           hash,
                         })
                         if (Number(transaction) > 0) {
+                          //@ts-ignore
                           const result2 = await readContract(wagmiConfig, {
                             address: process.env.NEXT_PUBLIC_ORA_MANTA as string,
                             abi,

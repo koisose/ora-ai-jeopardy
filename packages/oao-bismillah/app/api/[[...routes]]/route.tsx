@@ -7,6 +7,7 @@ import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
 
 import { getData } from '../../../action/action'
+import { generateOgImage } from '../../../action/create-image'
 //@ts-ignore
 const app = new Frog({
   //@ts-ignore
@@ -22,6 +23,10 @@ const app = new Frog({
 
 // Uncomment to use Edge Runtime
 // export const runtime = 'edge'
+app.get('/poco', async(c) => {
+  await generateOgImage()
+  return c.text('Hello, Hono!');
+});
 
 app
   .frame('/', (c) => {
