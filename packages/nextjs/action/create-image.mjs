@@ -2,8 +2,8 @@ import playwright from "playwright";
 // import sharp from "sharp";
 
 
-export async function generateOgImage() {
-//http://156.67.214.204:3004/
+export async function generateOgImage(where) {
+
 const browser = await playwright.chromium.connectOverCDP(
   process.env.BROWSERLESS,
 );
@@ -18,9 +18,9 @@ const browser = await playwright.chromium.connectOverCDP(
   await page.setViewportSize({ width: 512, height: 512 });
   
 
-
+const url=process.env.NODE_ENV==="DEVELOP"?"http://localhost:3000/":"https://nextjs-five-tau-89.vercel.app/";
   // Navigate to the provided URL.
-  await page.goto("https://duckduckgo.com/");
+  await page.goto(url+where);
   const title = await page.title();
   console.log(title)
   // Capture a screenshot of the page as the OG image.

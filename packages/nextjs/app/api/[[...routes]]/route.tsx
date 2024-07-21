@@ -23,8 +23,8 @@ const app = new Frog({
 
 // Uncomment to use Edge Runtime
 // export const runtime = 'edge'
-app.get('/poco', async(c) => {
-  await generateOgImage()
+app.get('/screenshot', async(c) => {
+  // await generateOgImage()
   return c.text('Hello, Hono!');
 });
 
