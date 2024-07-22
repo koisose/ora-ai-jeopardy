@@ -44,7 +44,7 @@ export async function saveDataById(data: any, database: string) {
     
    
         //@ts-ignore
-        let doc = await FlexibleModel.findOneAndUpdate({ _id:data._id }, data, { new: true, upsert: true });
+       await FlexibleModel.findOneAndUpdate({ _id:data._id }, data, { new: true, upsert: true });
    
     // console.log('Inserted document:', doc);
 
@@ -56,6 +56,53 @@ export async function saveDataById(data: any, database: string) {
   }
 }
 
+/**
+ * Finds a document in the specified MongoDB database using the provided query and updates it with the given data.
+ * If the document does not exist, a new document will be created with the provided data.
+ *
+ * @param {Object} query - The query to find the document.
+ * @param {Object} updateData - The data to update the document with.
+ * @param {string} database - The name of the database to connect to.
+ * @returns {Promise<Object|null>} - Returns the updated document or null if no document was found.
+ *
+ * @example
+ * const query = { _id: '12345' };
+ * const updateData = { name: 'Updated Name', age: 30 };
+ * const database = 'myCollection';
+ *
+ * findAndUpdateData(query, updateData, database)
+ *   .then(updatedDocument => {
+ *     console.log('Document updated successfully:', updatedDocument);
+ *   })
+ *   .catch(err => {
+ *     console.error('Error updating document:', err);
+ *   });
+ */
+export async function findAndUpdateData(query: any, updateData: any, database: string) {
+    try {
+        await mongoose.connect(url);
+        console.log('Connected successfully to MongoDB');
+
+        let FlexibleModel;
+        try {
+            FlexibleModel = mongoose.model(database);
+        } catch {
+            const flexibleSchema = new mongoose.Schema({}, { strict: false });
+            FlexibleModel = mongoose.model(database, flexibleSchema);
+        }
+
+        // Find the document by query and update it
+        //@ts-ignore
+        const updatedDocument = await FlexibleModel.findOneAndUpdate(query, updateData, { new: true, upsert: true });
+        console.log('Updated document:', updatedDocument);
+
+    } catch (err) {
+        console.error('Error:', err);
+    } finally {
+        mongoose.connection.close();  // Close the connection
+        console.log('Connection closed');
+    }
+}
 
 
 /**

@@ -29,8 +29,8 @@ app.get('/screenshot', async(c) => {
 });
 
 app
-  .frame('/', (c) => {
-
+  .frame('/', async (c) => {
+// const imageUrl=awai
     return c.res({
       image: (
         <div style={{ color: 'white', backgroundColor: 'purple', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', height: '100vh', fontSize: 60 }}>

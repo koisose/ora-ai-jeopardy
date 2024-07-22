@@ -1,6 +1,9 @@
 // src/workers/sample.worker.ts
 
 import { Worker, Queue } from 'bullmq';
+import {generateImage,decodeString} from './create-image'
+import {saveBufferToMinio} from './minio'
+import {findAndUpdateData} from './mongo'
 import Redis from 'ioredis';
 const connection = new Redis(process.env.REDIS_URL!);
 
@@ -18,13 +21,18 @@ export const sampleQueue = new Queue('sampleQueue', {
 const worker = new Worker(
   'sampleQueue', // this is the queue name, the first string parameter we provided for Queue()
    async (job:any) => {
-    const data = job?.data;
-    console.log(data);
-    console.log('Task executed successfully');
+    if(job?.data.type==="create-image"){
+      const decoded = decodeString(job?.data.encode);
+      const imageBuffer=await generateImage(decoded);
+      const imageUrl=await saveBufferToMinio("image",job?.data.encode,imageBuffer);
+      await findAndUpdateData({urlHash:job?.data.encode},{urlHash:job?.data.encode,url:imageUrl},"image")
+      console.log('Task executed successfully');
+    }
+    
   },
   {
     connection,
-    concurrency: 5,
+    concurrency: 1,
     removeOnComplete: { count: 1000 },
     removeOnFail: { count: 5000 },
   }

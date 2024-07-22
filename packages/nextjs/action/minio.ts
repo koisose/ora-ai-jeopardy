@@ -8,7 +8,7 @@ const minioClient = new Minio.Client({
 });
 
 export async function saveBufferToMinio(bucketName: string, fileName: string, buffer: Buffer) {
-    try {
+   
         // Check if the bucket exists
         const bucketExists = await minioClient.bucketExists(bucketName);
         if (!bucketExists) {
@@ -31,8 +31,5 @@ export async function saveBufferToMinio(bucketName: string, fileName: string, bu
         // Return the file URL
         const fileUrl = `${process.env.MINIO_URL}/${bucketName}/${fileName}`;
         return fileUrl;
-    } catch (err) {
-        console.error('Error uploading to Minio:', err);
-        throw err;
-    }
+    
 }
