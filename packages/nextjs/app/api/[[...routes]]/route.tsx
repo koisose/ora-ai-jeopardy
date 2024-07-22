@@ -21,22 +21,18 @@ const app = new Frog({
   // hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
 })
 
-// Uncomment to use Edge Runtime
-// export const runtime = 'edge'
-app.get('/screenshot', async(c) => {
-  // await generateOgImage()
-  return c.text('Hello, Hono!');
-});
 
-app
-  .frame('/', async (c) => {
-// const imageUrl=awai
+
+app.frame('/', async (c) => {
+const imageUrl=await generateOgImage("/screenshot/title");
+    const unixTimestamp = Math.floor(Date.now() / 1000);
+
     return c.res({
-      image: (
+      image: imageUrl.trim().length===0?(
         <div style={{ color: 'white', backgroundColor: 'purple', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', height: '100vh', fontSize: 60 }}>
           Guess the question, ORA AI Jeopardy like game
         </div>
-      ),
+      ):`${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
       intents: [
     
         <Button action="/play">
@@ -72,8 +68,11 @@ app.frame('/play', async (c) => {
       </div>
     ),
     intents: [
+      <Button action="/compo">
+          Play
+        </Button>,
       <TextInput placeholder="Input your question" />,
-      <Button.Transaction target="/ask">Ask</Button.Transaction>,
+      // <Button.Transaction target="/ask">Ask</Button.Transaction>,
       <Button action="/play">Next</Button>,
       <Button action="/">Back</Button>
 

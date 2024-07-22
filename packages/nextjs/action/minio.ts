@@ -1,4 +1,4 @@
-import Minio from 'minio';
+import * as Minio from 'minio'
 
 const minioClient = new Minio.Client({
     endPoint: process.env.MINIO_ENDPOINT as string,
@@ -24,12 +24,24 @@ export async function saveBufferToMinio(bucketName: string, fileName: string, bu
         }
 
         // Upload the buffer to the bucket
+       
         await minioClient.putObject(bucketName, fileName, buffer, bufferSize,{
-            'Content-Type': 'image/png'
+            'Content-Type': 'image/png',
+            'Cache-Control': 'max-age=0'
         });
 
-        // Return the file URL
-        const fileUrl = `${process.env.MINIO_URL}/${bucketName}/${fileName}`;
-        return fileUrl;
+        
+        
+        return fileName;
     
+}
+export async function deleteFileFromMinio(bucketName: string, fileName: string) {
+    try {
+        // Delete the object from the bucket
+        await minioClient.removeObject(bucketName, fileName);
+        console.log(`File ${fileName} deleted successfully from bucket ${bucketName}.`);
+    } catch (err) {
+        console.error('Error deleting file:', err);
+        throw new Error(`Failed to delete file ${fileName} from bucket ${bucketName}.`);
+    }
 }

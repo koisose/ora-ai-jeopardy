@@ -4,6 +4,9 @@ const TerserPlugin = require('terser-webpack-plugin');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    instrumentationHook: true,
+  },
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
@@ -18,24 +21,24 @@ const nextConfig = {
     return config;
   },
   // Adding optimization to avoid Terser errors
-  optimization: {
-    minimize: true,
+  // optimization: {
+  //   minimize: true,
    
-    // Adding a custom Terser configuration
-    minimizer: [
-      new TerserPlugin({
-        terserOptions: {
-          ecma: 2020,
-          compress: {
-            drop_console: true,
-          },
-          output: {
-            comments: false,
-          },
-        },
-      }),
-    ],
-  },
+  //   // Adding a custom Terser configuration
+  //   minimizer: [
+  //     new TerserPlugin({
+  //       terserOptions: {
+  //         ecma: 2020,
+  //         compress: {
+  //           drop_console: true,
+  //         },
+  //         output: {
+  //           comments: false,
+  //         },
+  //       },
+  //     }),
+  //   ],
+  // },
 };
 
 module.exports = nextConfig;
