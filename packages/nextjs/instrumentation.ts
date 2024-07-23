@@ -7,13 +7,16 @@ export async function register() {
         const { saveBufferToMinio } = await import('./action/minio');
         const { findAndUpdateData } = await import('./action/mongo');
         const { connection } = await import('./action/worker');
+        let i=0;
         new Worker(
             'sampleQueue', // this is the queue name, the first string parameter we provided for Queue()
              async (job:any) => {
                 // console.log("dassad",job)
+                i++
+                console.log(i)
               if(job?.data.data.type==="create-image"){
                 
-               
+          
                 const decoded = decodeString(job?.data.data.encode);
                 
                 // console.log(decoded)
