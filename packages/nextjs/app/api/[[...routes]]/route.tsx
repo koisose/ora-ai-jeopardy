@@ -2,49 +2,57 @@
 
 import { Button, Frog, TextInput } from 'frog'
 import { devtools } from 'frog/dev'
-// import { neynar } from 'frog/hubs'
+
 import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
 
 import { getData } from '../../../action/action'
-import { generateOgImage } from '../../../action/create-image'
+import { generateOgImage,encodeString } from '../../../action/create-image'
+import { NeynarAPIClient } from "@neynar/nodejs-sdk";
+const client = new NeynarAPIClient(process.env.NEYNAR as string);
 //@ts-ignore
 const app = new Frog({
+  title: 'ORA AI Jeopardy',
   //@ts-ignore
   assetsPath: '/',
   //@ts-ignore
   basePath: '/api',
   initialState: {
     count: 0, total: 0
-  }
-  // Supply a Hub to enable frame verification.
-  // hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
+  },
+  
 })
-
-
+function processingImage() {
+  return (
+    <div style={{ color: 'white', backgroundColor: 'purple', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', height: '100vh', fontSize: 60 }}>
+      Please wait we're still processing the image
+    </div>
+  )
+}
 
 app.frame('/', async (c) => {
-const imageUrl=await generateOgImage("/screenshot/title");
-    const unixTimestamp = Math.floor(Date.now() / 1000);
-
-    return c.res({
-      image: imageUrl.trim().length===0?(
-        <div style={{ color: 'white', backgroundColor: 'purple', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center', height: '100vh', fontSize: 60 }}>
-          Guess the question, ORA AI Jeopardy like game
-        </div>
-      ):`${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
-      intents: [
-    
-        <Button action="/play">
-          Play
-        </Button>,
-    
-        <Button.Redirect location="https://nextjs-five-tau-89.vercel.app">Create</Button.Redirect>
-      ]
-    })
+  const imageUrl = await generateOgImage("/screenshot/title");
+  const unixTimestamp = Math.floor(Date.now() / 1000);
+  const processing = processingImage();
+  return c.res({
+    image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+    intents: [
+      <Button action="/play">
+        Play
+      </Button>,
+      <Button.Redirect location="https://nextjs-five-tau-89.vercel.app">Create</Button.Redirect>
+    ]
   })
+})
 app.frame('/play', async (c) => {
-  const {  deriveState } = c
+  const { deriveState } = c
+  //@ts-ignore
+  const fid=c.frameData.fid;
+  const userData = await client.lookupUserByFid(fid);
+  let verifiedAddresses=userData.result.user.verifiedAddresses.eth_addresses
+  let addresses=verifiedAddresses.concat(userData.result.user.custodyAddress);
+  // console.log(verifiedAddresses)
+  console.log(addresses)
   // const fruit = inputText || buttonValue
   const allQuiz = await getData("quiz")
   const state = deriveState(previousState => {
@@ -68,23 +76,15 @@ app.frame('/play', async (c) => {
       </div>
     ),
     intents: [
-      <Button action="/compo">
-          Play
-        </Button>,
       <TextInput placeholder="Input your question" />,
       // <Button.Transaction target="/ask">Ask</Button.Transaction>,
       <Button action="/play">Next</Button>,
-      <Button action="/">Back</Button>
+      <Button action="/">Home</Button>
 
     ],
   })
 })
-app.transaction('/ask', async (c) => {
-  const { address } = c
-  // const allQuiz = await getData("quiz")
-  
-  return  new Response(address, { status: 200 })
-})
+
 
 devtools(app, { serveStatic })
 
