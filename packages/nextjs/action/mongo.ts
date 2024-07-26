@@ -7,7 +7,7 @@ let isConnected = false;
 async function connectToDatabase() {
     if (!isConnected) {
         try {
-            await mongoose.connect(url);
+            await mongoose.connect(url,{maxPoolSize:10});
             isConnected = true;
             console.log('Connected successfully to MongoDB');
         } catch (error) {

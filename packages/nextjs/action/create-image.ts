@@ -1,14 +1,9 @@
+
 import playwright from "playwright";
-import { getDataByColumnName } from './mongo'
+import { getDataByColumnName,findAndUpdateData } from './mongo'
+import { saveBufferToMinio } from './minio'
 import { sampleQueue } from './worker';
-export function encodeString(str: string) {
-  return Buffer.from(str, 'utf-8').toString('hex');
-}
-
-export function decodeString(encodedStr: string) {
-  return Buffer.from(encodedStr, 'hex').toString('utf-8');
-}
-
+import {encodeString} from './encode'
 export async function generateImage(where:string) {
 
   try {
@@ -26,9 +21,14 @@ export async function generateImage(where:string) {
     const url = process.env.SCREENSHOT_URL as string;
     // Navigate to the provided URL.
     await page.goto(url + where);
-  
+    const clip = {
+      x: 0,    // x coordinate
+      y: 0,    // y coordinate
+      width: 512,  // width of the region
+      height: 512  // height of the region
+    };
     // Capture a screenshot of the page as the OG image.
-    const buffer = await page.screenshot({ type: "png" });
+    const buffer = await page.screenshot({ type: "png",clip });
   
     console.log("The image has been saved!");
     // Close the browser.
@@ -40,14 +40,24 @@ export async function generateImage(where:string) {
   }
 }
 
-export async function generateOgImage(where:any) {
-  const check = await getDataByColumnName("image", "urlHash", encodeString(where));
- 
-  if (check.length === 0) {
-    await sampleQueue.add("create-image", { data: { encode: encodeString(where), type: "create-image" } },  { removeOnComplete: true, removeOnFail: true },)
+export async function generateOgImage(where:any,id:string):Promise<string> {
+  try{
+    const check = await getDataByColumnName("image", "url", "file-"+id);
+    
+    await sampleQueue.add("create-image", { data: { id:"file-"+id,where, type: "create-image" } },  { removeOnComplete: true, removeOnFail: true })
+    if (check.length === 0) {
+      const imageBuffer=await generateImage(where);
+      const imageUrl=await saveBufferToMinio("image","file-"+id,imageBuffer);
+     
+      await findAndUpdateData({url:"file-"+id},{url:"file-"+id},"image")
+      return imageUrl
+    } else {
+       return check[0].url
+    }
+  }catch(e){
+    //@ts-ignore
+    console.log("error",e.message)
     return ""
-  } else {
-    await sampleQueue.add("create-image", { data: { encode: encodeString(where), type: "create-image" } },  { removeOnComplete: true, removeOnFail: true },)
-    return check[0].url
   }
+  
 }

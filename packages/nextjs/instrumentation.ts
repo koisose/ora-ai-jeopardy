@@ -3,7 +3,8 @@ export async function register() {
     if (process.env.NEXT_RUNTIME === "nodejs") {
         //@ts-ignore
         const { Worker} = await import('bullmq');
-        const { generateImage, decodeString } = await import('./action/create-image');
+        const { generateImage } = await import('./action/create-image');
+        const {  decodeString } = await import('./action/encode');
         const { saveBufferToMinio } = await import('./action/minio');
         const { findAndUpdateData } = await import('./action/mongo');
         const { connection } = await import('./action/worker');
@@ -15,17 +16,13 @@ export async function register() {
                 i++
                 console.log(i)
               if(job?.data.data.type==="create-image"){
-                
-          
-                const decoded = decodeString(job?.data.data.encode);
-                
-                // console.log(decoded)
-                const imageBuffer=await generateImage(decoded);
-                // deleteFileFromMinio
-                
-                
-                const imageUrl=await saveBufferToMinio("image",job?.data.data.encode,imageBuffer);
-                await findAndUpdateData({urlHash:job?.data.data.encode},{urlHash:job?.data.encode,url:imageUrl},"image")
+            
+                const where = job?.data.data.where;
+              
+                const imageBuffer=await generateImage(where);
+                const id=job?.data.data.id;               
+                const imageUrl=await saveBufferToMinio("image",id,imageBuffer);
+                await findAndUpdateData({url:id},{url:imageUrl},"image")
                 console.log('Task executed successfully');
               }
               

@@ -26,8 +26,7 @@ export async function saveBufferToMinio(bucketName: string, fileName: string, bu
         // Upload the buffer to the bucket
        
         await minioClient.putObject(bucketName, fileName, buffer, bufferSize,{
-            'Content-Type': 'image/png',
-            'Cache-Control': 'max-age=0'
+            'Content-Type': 'image/png'
         });
 
         
