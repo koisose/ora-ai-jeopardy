@@ -5,9 +5,9 @@ import { devtools } from 'frog/dev'
 
 import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
+import mongoose from 'mongoose'
 
-
-import { getTableSize, getDataByColumnNamePaginated } from '../../../action/mongo'
+import { getTableSize, getDataByColumnNamePaginated,getDataByQuery } from '../../../action/mongo'
 import { generateOgImage } from '../../../action/create-image'
 import { encodeString } from '../../../action/encode'
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
@@ -76,7 +76,11 @@ app.frame('/play', async (c) => {
   
   //@ts-ignore
   const getQuizPaginated=await getDataByColumnNamePaginated("quiz",{},previousState.count+1,1)
-  const imageUrl = await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated[0].answer)}`,getQuizPaginated[0]._id);
+  const getQuizSolved=await getDataByQuery("quiz-solved",{address:{$in:addresses},quizId:getQuizPaginated[0]._id.toString()})
+  // console.log(getQ)
+  // quiz-solved
+  console.log(`/screenshot/solved/${encodeString(getQuizSolved[0]._id.toString())}`)
+  const imageUrl = getQuizSolved.length>0?await generateOgImage(`/screenshot/solved/${encodeString(getQuizSolved[0]._id.toString())}`,getQuizSolved[0]._id.toString()):await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated[0].answer)}`,getQuizPaginated[0]._id);
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
   return c.res({

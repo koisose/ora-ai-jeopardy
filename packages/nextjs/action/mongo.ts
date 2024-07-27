@@ -152,6 +152,24 @@ export async function getDataByColumnName(database: string, columnName: string, 
         return [];
     }
 }
+export async function getDataByQuery(database: string, query:any) {
+    try {
+        const FlexibleModel = await getFlexibleModel(database);
+        // Retrieve documents from the database by a specific column name and value
+        //@ts-ignore
+        const docs = await FlexibleModel.find(query);
+        if (docs.length > 0) {
+            // console.log(`Documents with ${columnName} = ${columnValue} found`);
+            return docs;
+        } else {
+            // console.log(`No documents with ${columnName} = ${columnValue} found`);
+            return [];
+        }
+    } catch (err) {
+        console.error('Error:', err);
+        return [];
+    }
+}
 export async function getDataByColumnNamePaginated(database: string, columnName: any, page: number, limit: number) {
     try {
         const FlexibleModel = await getFlexibleModel(database);

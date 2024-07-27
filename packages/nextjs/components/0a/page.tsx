@@ -174,19 +174,20 @@ const Home: NextPage = () => {
           </p>
           <div className="flex justify-center">
             <div className="flex flex-col items-center">
-              <textarea
+              {!connectedAddress && <textarea
                 placeholder="Enter your question here..."
                 className="w-full mt-4 p-2 border border-gray-300 bg-white rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                 onChange={(e) => setPrompt2(e.target.value)}
-              />
-              <button disabled={loading}
+              />}
+              <button disabled={loading || !connectedAddress}
                 onClick={async () => {
                   setLoading(true);
                   setResult2("")
                   try {
                     const pa = await generateQuiz(prompt2);
                     console.log(JSON.parse(pa).answer)
-                    await saveData({ address: connectedAddress, prompt: prompt2, answer: JSON.parse(pa).answer }, "quiz")
+                    //@ts-ignore
+                    await saveData({ address: connectedAddress.toLowerCase(), prompt: prompt2, answer: JSON.parse(pa).answer }, "quiz")
                     const getAllQuiz = await getData("quiz")
                     const getAllQuizSolved = await getData("quiz-solved")
                     const getAllQuizHash = await getData("quiz-hash")
@@ -226,7 +227,7 @@ const Home: NextPage = () => {
             {/* @ts-ignore */}
             <div className="flex flex-col items-center">
               {/* @ts-ignore */}
-              <span className="badge p-6 text-lg">Quiz that you have solved: {allQuizSolved.filter(quiz => quiz.address === connectedAddress).length}/{allQuiz.filter(quiz => quiz.address !== connectedAddress).length}</span>
+              <span className="badge p-6 text-lg">Quiz that you have solved: {allQuizSolved.filter(quiz => quiz.address === connectedAddress.toLowerCase()).length}/{allQuiz.filter(quiz => quiz.address !== connectedAddress.toLowerCase()).length}</span>
               <button
                 onClick={async () => {
                   setLoading(true);
@@ -257,7 +258,7 @@ const Home: NextPage = () => {
                 <code>{a.answer}</code>
               </h2>
               {/* @ts-ignore */}
-              {(connectedAddress !== a.address && !allQuizSolved.some(quizSolved => quizSolved.quizId === a._id) && !allQuizHash.some(quizSolved => quizSolved.quizId === a._id) || changeQuestion[a._id]) && <>
+              {(connectedAddress.toLowerCase() !== a.address && !allQuizSolved.some(quizSolved => quizSolved.quizId === a._id) && !allQuizHash.some(quizSolved => quizSolved.quizId === a._id) || changeQuestion[a._id]) && <>
                 {/* @ts-ignore */}
                 <input value={answers[a._id] || ''} onChange={(e) => handleInputChange(a._id, e.target.value)}
                   disabled={loading}
@@ -274,13 +275,13 @@ const Home: NextPage = () => {
                     const hash = await executeContractFunction(answers[a._id])
                     // const hash="pompom"
                     //@ts-ignore
-                    const isExist = await getDataByColumn("quiz-hash", { address: connectedAddress, quizId: a._id });
+                    const isExist = await getDataByColumn("quiz-hash", { address: connectedAddress.toLowerCase(), quizId: a._id });
                     if (isExist.length > 0) {
                       //@ts-ignore
-                      await updateDataById("quiz-hash", isExist[0]._id, { quizSolved: false, hash, address: connectedAddress, quizId: a._id, prompt: answers[a._id] })
+                      await updateDataById("quiz-hash", isExist[0]._id, { quizSolved: false, hash, address: connectedAddress.toLowerCase(), quizId: a._id, prompt: answers[a._id] })
                     } else {
                       //@ts-ignore
-                      await saveData({ quizSolved: false, hash, address: connectedAddress, quizId: a._id, prompt: answers[a._id] }, "quiz-hash")
+                      await saveData({ quizSolved: false, hash, address: connectedAddress.toLowerCase(), quizId: a._id, prompt: answers[a._id] }, "quiz-hash")
                     }
                     //@ts-ignore
 
@@ -327,7 +328,7 @@ const Home: NextPage = () => {
                 </button>
               </>}
               {/* @ts-ignore */}
-              {(!allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress) && allQuizHash.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress) && !changeQuestion[a._id]) && (
+              {(!allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress.toLowerCase()) && allQuizHash.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress) && !changeQuestion[a._id]) && (
                 <div >
                   <div className="flex justify-center items-center mb-4 font-bold text-black">
                     your question:
@@ -335,7 +336,7 @@ const Home: NextPage = () => {
                   <div className="flex justify-center items-center mb-4">
                     <span className="bg-purple-600 text-white text-sm font-bold mr-2 px-4 py-2 rounded-full shadow-lg">
                       {/* @ts-ignore */}
-              {allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].prompt}
+              {allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress.toLowerCase())[0].prompt}
                     </span>
                   </div>
                   <div className="text-center text-green-500">
@@ -346,7 +347,7 @@ const Home: NextPage = () => {
                       onClick={async () => {
                         setLoading(true)
                         //@ts-ignore
-                        const hash = allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].hash
+                        const hash = allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress.toLowerCase())[0].hash
                         //@ts-ignore
                         const transaction = await getTransactionConfirmations(wagmiConfig, {
                           chainId: mantaSepoliaTestnet.id,
@@ -359,7 +360,7 @@ const Home: NextPage = () => {
                             abi,
                             functionName: 'prompts',
                             //@ts-ignore
-                            args: [11, allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].prompt],
+                            args: [11, allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress.toLowerCase())[0].prompt],
                             chainId: mantaSepoliaTestnet.id,
                           })
                           // console.log(result2)
@@ -367,7 +368,9 @@ const Home: NextPage = () => {
                           const near = await calculateSimilarity([result2, a.answer])
                           if (near > 0.5) {
                             //@ts-ignore
-                            await saveData({ question: answers[a._id], address: connectedAddress, answer: result2, similarity: near, quizId: a._id }, "quiz-solved")
+                            await saveData({ question: answers[a._id], address: connectedAddress.toLowerCase(), answer: result2, similarity: near, quizId: a._id }, "quiz-solved")
+                            //@ts-ignore
+                            await updateDataById("quiz-hash", allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress.toLowerCase())[0]._id, { quizSolved: true })
                             const responseQuiz = await getData("quiz");
                             setAllQuiz(responseQuiz)
                             const responseQuizSolved = await getData("quiz-solved");
@@ -411,7 +414,7 @@ const Home: NextPage = () => {
               )}
 
               {/* @ts-ignore */}
-              {allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress && allQuizHash.some(quizSolved => quizSolved.quizId === a._id)) && (
+              {allQuizSolved.some(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress.toLowerCase() && allQuizHash.some(quizSolved => quizSolved.quizId === a._id)) && (
                 <div className="text-center text-green-500">
                   <span className="bg-green-500 text-white font-bold py-1 px-3 rounded-full inline-block text-xs">🎉 You have already solved this quiz! 🎉</span>
                   <div className="text-center text-blue-500">
@@ -421,7 +424,7 @@ const Home: NextPage = () => {
                   <div className="flex justify-center items-center mb-4">
                     <span className="bg-purple-600 text-white text-sm font-bold mr-2 px-4 py-2 rounded-full shadow-lg">
                       {/* @ts-ignore */}
-              {allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].prompt}
+              {allQuizHash.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress.toLowerCase())[0].prompt}
                     </span>
                   </div>
                   <div className="flex justify-center items-center mb-4 font-bold text-black">
@@ -430,7 +433,7 @@ const Home: NextPage = () => {
                   <div className="flex justify-center items-center mb-4">
                     <span className="bg-purple-600 text-white text-sm font-bold mr-2 px-4 py-2 rounded-full shadow-lg">
                       {/* @ts-ignore */}
-                      {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].similarity}
+                      {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress.toLowerCase())[0].similarity}
                     </span>
                   </div>
                   <div className="flex justify-center items-center mb-4 font-bold text-black">
@@ -439,7 +442,7 @@ const Home: NextPage = () => {
                   <div className="flex justify-center items-center mb-4">
                     <span className="bg-purple-600 text-white text-sm font-bold mr-2 px-4 py-2 rounded-full shadow-lg">
                       {/* @ts-ignore */}
-                      {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress)[0].answer.substring(0, 100)}...
+                      {allQuizSolved.filter(quizSolved => quizSolved.quizId === a._id && quizSolved.address === connectedAddress.toLowerCase())[0].answer.substring(0, 100)}...
                     </span>
                   </div>
                     
