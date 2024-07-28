@@ -6,10 +6,11 @@ import { devtools } from 'frog/dev'
 import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
 
-import { getTableSize, getDataByColumnNamePaginated,getDataByQuery,getDataById } from '../../../action/mongo'
-import { generateOgImage } from '../../../action/create-image'
-import { encodeString } from '../../../action/encode'
+import { getTableSize, getDataByColumnNamePaginated,getDataByQuery,getDataById } from '~~/action/mongo'
+import { generateOgImage } from '~~/action/create-image'
+import { encodeString } from '~~/action/encode'
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
+
 const client = new NeynarAPIClient(process.env.NEYNAR as string);
 //@ts-ignore
 const app = new Frog({
@@ -68,9 +69,98 @@ app.frame('/quiz', async (c) => {
     image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
     intents: [
       <TextInput placeholder="Input your question" />,  
-      <Button>Create</Button>,
+      <Button action="/quiz-sure">Create</Button>,
       <Button action="/">Home</Button>
     ]
+  })
+})
+app.frame('/quiz-sure', async (c) => {
+  const { inputText } = c
+
+  const imageUrl = inputText?.trim().length===0?await generateOgImage("/screenshot/quiz",encodeString("/screenshot/quiz")):await generateOgImage(`/screenshot/quiz/${encodeString(inputText as string)}`,encodeString(`/screenshot/quiz/${encodeString(inputText as string)}`));
+  const unixTimestamp = Math.floor(Date.now() / 1000);
+  const processing = processingImage();
+  let intents=inputText?.trim().length===0?[
+    <TextInput placeholder="Input your question" />,  
+    <Button action="/quiz-sure">Create</Button>,
+    <Button action="/">Home</Button>
+  ]:[
+    <Button>Yes</Button>,
+    <Button action="/quiz">No</Button>
+  ];
+  return c.res({
+    action: '/finish',
+    image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+    intents 
+  })
+})
+app.frame('/finish', (c) => {
+  const { transactionId } = c
+  return c.res({
+    image: (
+      <div
+      style={{
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        fontSize: 32,
+        fontWeight: 600,
+      }}
+    >
+      <svg
+        width="75"
+        viewBox="0 0 75 65"
+        fill="#000"
+        style={{ margin: '0 75px' }}
+      >
+        <path d="M37.59.25l36.95 64H.64l36.95-64z"></path>
+      </svg>
+      <div style={{ marginTop: 40 }}>Please wait while ORA AI</div>
+      <div>processing your transaction</div>
+      <div>click refresh button to see the result</div>
+    </div>
+    
+    ),
+    intents:[<Button action="/refresh" value={transactionId}>Refresh</Button>]
+  })
+})
+app.frame('/refresh', async(c) => {
+  const { buttonValue } = c
+ 
+  return c.res({
+    image: (
+      <div
+      style={{
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        fontSize: 32,
+        fontWeight: 600,
+      }}
+    >
+      <svg
+        width="75"
+        viewBox="0 0 75 65"
+        fill="#000"
+        style={{ margin: '0 75px' }}
+      >
+        <path d="M37.59.25l36.95 64H.64l36.95-64z"></path>
+      </svg>
+      <div style={{ marginTop: 40 }}>Please wait while ORA AI</div>
+      <div>processing your transaction</div>
+      <div>click refresh button to see the result</div>
+    </div>
+    
+    ),
+    intents:[<Button action="/refresh" value={buttonValue}>Refresh</Button>]
   })
 })
 app.frame('/play', async (c) => {

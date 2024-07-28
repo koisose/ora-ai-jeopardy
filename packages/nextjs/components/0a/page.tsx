@@ -78,44 +78,7 @@ async function executeContractFunction(prompt: any) {
 //@ts-ignore
   const hash = await writeContract(wagmiConfig, request)
   return hash
-  // let transaction = await getTransactionConfirmations(wagmiConfig, {
-  //   chainId: mantaSepoliaTestnet.id,
-  //   hash,
-  // })
-  // while (Number(transaction) === 0) {
-  //   transaction = await getTransactionConfirmations(wagmiConfig, {
-  //     chainId: mantaSepoliaTestnet.id,
-  //     hash,
-  //   })
-  //   console.log("still waiting for transaction to be confirmed")
-  // }
-  // let result2 = await readContract(wagmiConfig, {
-  //   address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
-  //   abi,
-  //   functionName: 'prompts',
-  //   args: [15, prompt],
-  //   chainId: mantaSepoliaTestnet.id,
-  // })
-  // console.log("result2", result2)
-  // let stop=0;
-  // while ((result2 as string).length === 0) {
-  //   result2 = await readContract(wagmiConfig, {
-  //     address: '0xe75af5294f4CB4a8423ef8260595a54298c7a2FB',
-  //     abi,
-  //     functionName: 'prompts',
-  //     args: [15, prompt],
-  //     chainId: mantaSepoliaTestnet.id,
-  //   })
-  //   stop+=1
-  //   if(stop===20){
-  //     break;
-  //   }
-  //   console.log("result2", result2)
-  //   await new Promise(resolve => setTimeout(resolve, 2000));
-  // }
-
-  // console.log(result2)
-  // return result2
+  
 }
 
 const Home: NextPage = () => {
