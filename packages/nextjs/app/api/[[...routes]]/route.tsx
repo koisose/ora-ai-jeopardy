@@ -5,9 +5,8 @@ import { devtools } from 'frog/dev'
 
 import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
-import mongoose from 'mongoose'
 
-import { getTableSize, getDataByColumnNamePaginated,getDataByQuery } from '../../../action/mongo'
+import { getTableSize, getDataByColumnNamePaginated,getDataByQuery,getDataById } from '../../../action/mongo'
 import { generateOgImage } from '../../../action/create-image'
 import { encodeString } from '../../../action/encode'
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
@@ -43,7 +42,34 @@ app.frame('/', async (c) => {
       <Button action="/play">
         Play
       </Button>,
-      <Button.Redirect location="https://nextjs-five-tau-89.vercel.app">Create</Button.Redirect>
+      <Button action="/quiz">Create</Button>
+    ]
+  })
+})
+app.frame('/share/:panda', async (c) => {
+  console.log(c.initialPath.replace("/api/share/",""))
+  const getQuizPaginated=await getDataById("quiz",c.initialPath.replace("/api/share/",""))
+  const imageUrl = await generateOgImage("/screenshot/quiz",encodeString("/screenshot/quiz"));
+  const unixTimestamp = Math.floor(Date.now() / 1000);
+  const processing = processingImage();
+  return c.res({
+    image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+    intents: [
+      <Button action="/play/">Create</Button>,
+      <Button action="/">Home</Button>
+    ]
+  })
+})
+app.frame('/quiz', async (c) => {
+  const imageUrl = await generateOgImage("/screenshot/quiz",encodeString("/screenshot/quiz"));
+  const unixTimestamp = Math.floor(Date.now() / 1000);
+  const processing = processingImage();
+  return c.res({
+    image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+    intents: [
+      <TextInput placeholder="Input your question" />,  
+      <Button>Create</Button>,
+      <Button action="/">Home</Button>
     ]
   })
 })
@@ -77,15 +103,27 @@ app.frame('/play', async (c) => {
   //@ts-ignore
   const getQuizPaginated=await getDataByColumnNamePaginated("quiz",{},previousState.count+1,1)
   const getQuizSolved=await getDataByQuery("quiz-solved",{address:{$in:addresses},quizId:getQuizPaginated[0]._id.toString()})
-  const imageUrl = getQuizSolved.length>0?await generateOgImage(`/screenshot/solved/${encodeString(getQuizSolved[0]._id.toString())}`,getQuizSolved[0]._id.toString()):await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated[0].answer)}`,getQuizPaginated[0]._id);
+  const getQuizHash=await getDataByQuery("quiz-hash",{address:{$in:addresses},quizId:getQuizPaginated[0]._id.toString()})
+  const what = getQuizSolved.length > 0 ? {
+    aiAnswer: getQuizSolved[0].answer,
+    quiz: getQuizPaginated[0].answer,
+    question: getQuizHash[0].prompt
+  } : null;
+  
+  const imageUrl = getQuizSolved.length>0?await generateOgImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`,getQuizSolved[0]._id.toString()):await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated[0].answer)}`,getQuizPaginated[0]._id);
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
-  let intents=[
+  let intents = getQuizSolved.length > 0 ? [
+    <Button action="/play" >Next</Button>,
+    <Button action="/">Home</Button>,
+    <Button.Redirect location="https://google.com">Share</Button.Redirect>
+
+  ] : [
     <TextInput placeholder="Input your question" />,
     <Button.Transaction target="/ask">Ask</Button.Transaction>,
     <Button action="/play" >Next</Button>,
-    <Button action="/">Home</Button>
-
+    <Button action="/">Home</Button>,
+    <Button.Redirect location="https://google.com">Share</Button.Redirect>,
   ];
   return c.res({
     image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
