@@ -77,22 +77,19 @@ app.frame('/play', async (c) => {
   //@ts-ignore
   const getQuizPaginated=await getDataByColumnNamePaginated("quiz",{},previousState.count+1,1)
   const getQuizSolved=await getDataByQuery("quiz-solved",{address:{$in:addresses},quizId:getQuizPaginated[0]._id.toString()})
-  // console.log(getQ)
-  // quiz-solved
-  console.log(`/screenshot/solved/${encodeString(getQuizSolved[0]._id.toString())}`)
   const imageUrl = getQuizSolved.length>0?await generateOgImage(`/screenshot/solved/${encodeString(getQuizSolved[0]._id.toString())}`,getQuizSolved[0]._id.toString()):await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated[0].answer)}`,getQuizPaginated[0]._id);
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
+  let intents=[
+    <TextInput placeholder="Input your question" />,
+    <Button.Transaction target="/ask">Ask</Button.Transaction>,
+    <Button action="/play" >Next</Button>,
+    <Button action="/">Home</Button>
+
+  ];
   return c.res({
     image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
-    intents: [
-      <TextInput placeholder="Input your question" />,
-      // <Button.Transaction target="/ask">Ask</Button.Transaction>,
-      //@ts-ignore
-      <Button action="/play" >Next</Button>,
-      <Button action="/">Home</Button>
-
-    ],
+    intents,
   })
 })
 

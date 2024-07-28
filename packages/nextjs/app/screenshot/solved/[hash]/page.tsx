@@ -2,12 +2,12 @@
 
 import React from 'react';
 import '~~/styles/globalisasi.css'
-import { ChevronRight } from "lucide-react";
+import { decodeString } from '~~/action/encode'
 import { cn } from "~~/lib/utils";
 import AnimatedGradientText from "~~/components/magicui/animated-gradient-text";
 
-export function ConfettiDemo() {
-
+export function ConfettiDemo({ params }:any) {
+  const decoded=decodeString(params.hash);
 
   return (
     <div className="flex items-center align-center justify-center h-screen">
