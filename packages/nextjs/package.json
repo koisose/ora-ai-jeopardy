@@ -35,7 +35,7 @@
     "daisyui": "4.5.0",
     "deta": "^2.0.0",
     "framer-motion": "^11.3.8",
-    "frog": "^0.14.5",
+    "frog": "^0.15.7",
     "hono": "^4.5.1",
     "inspector": "^0.5.0",
     "ioredis": "^5.4.1",

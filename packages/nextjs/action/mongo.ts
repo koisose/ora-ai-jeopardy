@@ -70,6 +70,8 @@ export async function saveData(data: any, database: string) {
         const newDocument = new FlexibleModel(data);
         const doc = await newDocument.save();
         console.log('Inserted document:', doc);
+        return doc
+        
     } catch (err) {
         console.error('Error:', err);
     }
