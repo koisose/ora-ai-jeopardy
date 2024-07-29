@@ -1,20 +1,54 @@
 import * as use from '@tensorflow-models/universal-sentence-encoder';
 import * as tf from '@tensorflow/tfjs';
-import { parseEther, formatUnits } from 'viem'
-import { getAccount, simulateContract, writeContract, readContract, getTransactionConfirmations } from '@wagmi/core'
-import { wagmiConfig } from "../services/web3/wagmiConfig";
-
-import { abi } from '../abi/abi'
-import { createPublicClient, http } from 'viem'
-import { sepolia } from 'viem/chains'
+import { formatUnits } from 'viem'
+import { abi,optimismAbi } from '../abi/abi'
+import { createPublicClient, http,parseEventLogs } from 'viem'
+import { optimismSepolia } from 'viem/chains'
 //@ts-ignore
 // const { connector } = getAccount(wagmiConfig)
 
 
 const publicClient = createPublicClient({
-  chain: sepolia,
-  transport: http()
+  chain: optimismSepolia,
+  transport: http('https://optimism-sepolia.infura.io/v3/'+process.env.INFURA)
+  
 })
+export async function getAnswerNow(hash:any){
+  try{
+    const transaction = await publicClient.getTransactionReceipt({ 
+      hash
+    })
+    // console.log(transaction.logs)
+    const logs = parseEventLogs({ 
+      abi: optimismAbi, 
+      logs: transaction.logs,
+    })
+    const logsData=logs.filter((log:any) => log.eventName === "promptRequest")
+    if(logsData.length>0){
+      const requestId=(logsData[0] as any).args.requestId
+      const answer = await publicClient.getContractEvents({
+        abi: optimismAbi,
+        address: process.env.NEXT_PUBLIC_OAO_PROMPT as any || "0xf6919ebb1bFdD282c4edc386bFE3Dea1a1D8AC16",
+         eventName: 'promptsUpdated',
+         fromBlock:transaction.blockNumber
+      })
+      const answerLog=answer.filter((log:any) => log.eventName === "promptsUpdated" && log.args.requestId===requestId)
+      if(answerLog.length>0){
+        return (answerLog[0] as any).args.output
+      }else{
+        return false
+      }
+    }else{
+  
+      return false
+    }
+  }catch{
+    return false
+  }
+   
+}
+
+
 export async function calculateSimilarity(sentences: any) {
   // Load the Universal Sentence Encoder model
   const model = await use.load();
@@ -52,10 +86,10 @@ export const convertBigIntToEther = (bigIntValue: any) => {
 export async function estimateFee() {
   //@ts-ignore
   const result = await publicClient.readContract({
-    address: process.env.NEXT_PUBLIC_ORA_SEPOLIA as any,
-    abi,
+    address: process.env.NEXT_PUBLIC_OAO_PROMPT as any,
+    abi:optimismAbi,
     functionName: 'estimateFee',
-    args: [13],
+    args: [11],
 
   })
   return result

@@ -106,10 +106,10 @@ app.transaction('/ask-question/:question', async (c) => {
   const est = await estimateFee();
   return c.contract({
     abi,
-    chainId: 'eip155:11155111',
+    chainId: 'eip155:11155420',
     functionName: 'calculateAIResult',
     args: [11, decodeString(req.param("question"))],
-    to: process.env.NEXT_PUBLIC_ORA_SEPOLIA as any,
+    to: process.env.NEXT_PUBLIC_OAO_PROMPT as any,
     value: parseEther(convertBigIntToEther(est))
   })
 })
