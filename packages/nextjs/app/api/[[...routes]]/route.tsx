@@ -9,7 +9,7 @@ import { serveStatic } from 'frog/serve-static'
 import { getTableSize, getDataByColumnNamePaginated, getDataByQuery, getDataById, saveData } from '~~/action/mongo'
 import { generateOgImage } from '~~/action/create-image'
 import { encodeString, decodeString } from '~~/action/encode'
-import { estimateFee, convertBigIntToEther, getAnswer, getAddress } from '~~/action/eth'
+import { estimateFee, convertBigIntToEther, getAnswerNow, getAddress,calculateSimilarity } from '~~/action/eth'
 import { abi } from '~~/abi/abi'
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 import { parseEther } from 'viem'
@@ -84,17 +84,18 @@ app.frame('/quiz-sure', async (c) => {
   const imageUrl = inputText?.trim().length === 0 ? await generateOgImage("/screenshot/quiz", encodeString("/screenshot/quiz")) : await generateOgImage(`/screenshot/quiz/${encodeString(inputText as string)}`, encodeString(`/screenshot/quiz/${encodeString(inputText as string)}`));
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
+  const question=encodeString(JSON.stringify({"instruction":"you're a jeopardy quiz generator, you will only answer without revealing the real answer for example i will ask 'who is vitalik?' you will answer 'he is the founder of ethereum'","input":inputText}))
   let intents = inputText?.trim().length === 0 ? [
     <TextInput placeholder="Input your question" />,
     <Button action="/quiz-sure">Create</Button>,
     <Button action="/">Home</Button>
   ] : [
 
-    <Button.Transaction target={`/ask-question/${encodeString(inputText as string)}`} >Yes</Button.Transaction>,
+    <Button.Transaction target={`/ask-question/${question}`} >Yes</Button.Transaction>,
     <Button action="/quiz">No</Button>
   ];
   return c.res({
-    action: `/finish/${encodeString(inputText as string)}`,
+    action: `/finish/${question}`,
     image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
     intents
   })
@@ -153,14 +154,14 @@ app.frame('/refresh/:question', async (c) => {
   const question = decodeString(req.param("question"));
   const processing = processingImage();
   try{
-    const answer = await getAnswer(buttonValue as string, question);
+    const answer = await getAnswerNow(buttonValue as string);
     const address = await getAddress(buttonValue as string)
     let imageUrl = "";
     const unixTimestamp = Math.floor(Date.now() / 1000);
     
     let id=""
     if (answer) {
-      const data = await saveData({ address: address, prompt: question, answer }, "quiz")
+      const data = await saveData({ address: address, prompt: JSON.parse(question).input, answer }, "quiz")
       imageUrl = await generateOgImage(`/screenshot/question/${encodeString(answer as string)}`, data._id.toString());
       id=data._id.toString();
     }
@@ -285,11 +286,58 @@ app.frame('/play', async (c) => {
     <Button.Redirect location="https://google.com">Share</Button.Redirect>,
   ];
   return c.res({
+    action:`/solved/${getQuizPaginated[0]._id.toString()}`,
     image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
     intents,
   })
 })
+app.frame('/solved/:id', async(c) => {
+  const { transactionId, buttonValue,inputText,req } = c
+  const answer = await getAnswerNow(transactionId || buttonValue as string);
+    const address = await getAddress(transactionId || buttonValue as string)
+    let imageUrl = "";
+    const unixTimestamp = Math.floor(Date.now() / 1000);
+    const quiz=getDataById("quiz",req.param("id"))
+    let id=""
+    if (answer) {
+      const near = await calculateSimilarity([answer, quiz.answer])
+      await saveData({ question: inputText, address, answer, similarity: near, quizId: req.param("id") }, "quiz-solved")
+      
+      imageUrl = await generateOgImage(`/screenshot/question/${encodeString(answer as string)}`, data._id.toString());
+      id=data._id.toString();
+    }
+  return c.res({
+    image: (
+      <div
+        style={{
+          height: '100%',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#fff',
+          fontSize: 32,
+          fontWeight: 600,
+        }}
+      >
+        <svg
+          width="75"
+          viewBox="0 0 75 65"
+          fill="#000"
+          style={{ margin: '0 75px' }}
+        >
+          <path d="M37.59.25l36.95 64H.64l36.95-64z"></path>
+        </svg>
+        <div style={{ marginTop: 40 }}>Please wait while ORA AI</div>
+        <div>processing your transaction</div>
+        <div>click refresh button to see the result</div>
+      </div>
 
+    ),
+    intents: [<Button action={`/solved`} value={transactionId || buttonValue}>Refresh</Button>]
+  })
+})
 
 
 devtools(app, { serveStatic })
