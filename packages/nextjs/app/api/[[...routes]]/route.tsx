@@ -79,19 +79,41 @@ app.frame('/', async (c) => {
 })
 app.frame('/share/:id', async (c) => {
 const {req}=c
+//@ts-ignore
+const fid = c.frameData.fid;
+//   //@ts-ignore
+const userData = await client.lookupUserByFid(fid);
+//@ts-ignore
+let verifiedAddresses = userData.result.user.verifiedAddresses.eth_addresses
+let addresses = verifiedAddresses.concat(userData.result.user.custodyAddress);
   const getQuizPaginated = await getDataById("quiz", req.param("id"))
-  const imageUrl = await generateOgImage("/screenshot/quiz", encodeString("/screenshot/quiz"));
+  const getQuizSolved = await getDataByQuery("quiz-solved", { address: { $in: addresses }, quizId: getQuizPaginated._id.toString() })
+  const getQuizHash = await getDataByQuery("quiz-hash", { address: { $in: addresses }, quizId: getQuizPaginated._id.toString() })
+  const what = getQuizSolved.length > 0 ? {
+    aiAnswer: getQuizSolved[0].answer,
+    quiz: getQuizPaginated.answer,
+    question: getQuizHash[0].prompt
+  } : null;
+
+  const imageUrl = getQuizSolved.length > 0 ? await generateOgImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`, getQuizSolved[0]._id.toString()) : await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated.answer)}`, getQuizPaginated._id.toString());
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
+  let intents = getQuizSolved.length > 0 ? [
+    <Button action="/play" >Next</Button>,
+    <Button action="/">Home</Button>,
+    <Button.Redirect location="https://google.com">Share</Button.Redirect>
+
+  ] : [
+    <TextInput placeholder="Input your question" />,
+    <Button.Transaction target="/ask">Ask</Button.Transaction>,
+    <Button action="/play" >Next</Button>,
+    <Button action="/">Home</Button>,
+    <Button.Redirect location="https://google.com">Share</Button.Redirect>,
+  ];
   return c.res({
+    action:`/solved/${getQuizPaginated._id.toString()}`,
     image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
-    intents: [
-      <TextInput placeholder="Input your question" />,
-      <Button.Transaction target="/ask">Ask</Button.Transaction>,
-      <Button action="/play" >Next</Button>,
-      <Button action="/">Home</Button>,
-      <Button.Redirect location="https://google.com">Share</Button.Redirect>
-    ]
+    intents,
   })
 })
 app.frame('/quiz', async (c) => {
