@@ -137,12 +137,12 @@ const Home: NextPage = () => {
           </p>
           <div className="flex justify-center">
             <div className="flex flex-col items-center">
-              {!connectedAddress && <textarea
+              {/* {connectedAddress && <textarea
                 placeholder="Enter your question here..."
                 className="w-full mt-4 p-2 border border-gray-300 bg-white rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                 onChange={(e) => setPrompt2(e.target.value)}
               />}
-              <button disabled={loading || !connectedAddress}
+              {connectedAddress &&<button disabled={loading || !connectedAddress}
                 onClick={async () => {
                   setLoading(true);
                   setResult2("")
@@ -175,7 +175,7 @@ const Home: NextPage = () => {
                   </svg>
                 </div> : "Create Quiz Using AI Now"}
 
-              </button>
+              </button>} */}
               
 
               {result2.length > 0 && <div className="bg-blue-700 rounded-lg p-4 mt-2">
@@ -191,7 +191,7 @@ const Home: NextPage = () => {
             <div className="flex flex-col items-center">
               {/* @ts-ignore */}
               <span className="badge p-6 text-lg">Quiz that you have solved: {allQuizSolved.filter(quiz => quiz.address === connectedAddress.toLowerCase()).length}/{allQuiz.filter(quiz => quiz.address !== connectedAddress.toLowerCase()).length}</span>
-              <button
+              {/* <button
                 onClick={async () => {
                   setLoading(true);
                   try {
@@ -210,7 +210,7 @@ const Home: NextPage = () => {
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4 mb-4"
               >
                 {loading ? "Loading..." : "Refresh Quiz"}
-              </button>
+              </button> */}
             </div>
           </div>
           <div className="flex flex-wrap justify-center gap-4">

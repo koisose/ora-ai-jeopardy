@@ -49,7 +49,7 @@ export async function generateOgImage(where:any,id:string):Promise<string> {
       const imageBuffer=await generateImage(where);
       const imageUrl=await saveBufferToMinio("image","file-"+id,imageBuffer);
      
-      await findAndUpdateData({url:"file-"+id},{url:"file-"+id},"image")
+      // await findAndUpdateData({url:"file-"+id},{url:"file-"+id},"image")
       return imageUrl
     } else {
        return check[0].url
