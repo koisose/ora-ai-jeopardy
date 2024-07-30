@@ -47,7 +47,29 @@ export async function getAnswerNow(hash:any){
   }
    
 }
-
+export async function getQuestion(hash:any){
+  try{
+    const transaction = await publicClient.getTransactionReceipt({ 
+      hash
+    })
+    // console.log(transaction.logs)
+    const logs = parseEventLogs({ 
+      abi: optimismAbi, 
+      logs: transaction.logs,
+    })
+    const logsData=logs.filter((log:any) => log.eventName === "promptRequest")
+    if(logsData.length>0){
+      return (logsData[0] as any).args.prompt
+      
+    }else{
+  
+      return false
+    }
+  }catch{
+    return false
+  }
+   
+}
 
 export async function calculateSimilarity(sentences: any) {
   // Load the Universal Sentence Encoder model

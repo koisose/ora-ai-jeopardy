@@ -9,7 +9,7 @@ import { serveStatic } from 'frog/serve-static'
 import { getTableSize, getDataByColumnNamePaginated, getDataByQuery, getDataById, saveData } from '~~/action/mongo'
 import { generateOgImage } from '~~/action/create-image'
 import { encodeString, decodeString } from '~~/action/encode'
-import { estimateFee, convertBigIntToEther, getAnswerNow, getAddress,calculateSimilarity } from '~~/action/eth'
+import { estimateFee, convertBigIntToEther, getAnswerNow, getAddress,calculateSimilarity,getQuestion } from '~~/action/eth'
 import { abi } from '~~/abi/abi'
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 import { parseEther } from 'viem'
@@ -24,7 +24,6 @@ const app = new Frog({
   basePath: '/api',
   initialState: {
     count: 0,
-    address: "",
     question: ""
   },
 
@@ -36,7 +35,34 @@ function processingImage() {
     </div>
   )
 }
-
+function pleaseWait() {
+  return (
+    <div
+    style={{
+      height: '100%',
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#fff',
+      fontSize: 32,
+      fontWeight: 600,
+    }}
+  >
+    <svg
+      width="75"
+      viewBox="0 0 75 65"
+      fill="#000"
+      style={{ margin: '0 75px' }}
+    >
+      <path d="M37.59.25l36.95 64H.64l36.95-64z"></path>
+    </svg>
+    <div style={{ marginTop: 40 }}>Please wait, still processing</div>
+  </div>
+  
+  )
+}
 app.frame('/', async (c) => {
   const imageUrl = await generateOgImage("/screenshot/title", encodeString("/screenshot/title"));
   const unixTimestamp = Math.floor(Date.now() / 1000);
@@ -51,17 +77,20 @@ app.frame('/', async (c) => {
     ]
   })
 })
-app.frame('/share/:panda', async (c) => {
-
-  const getQuizPaginated = await getDataById("quiz", c.initialPath.replace("/api/share/", ""))
+app.frame('/share/:id', async (c) => {
+const {req}=c
+  const getQuizPaginated = await getDataById("quiz", req.param("id"))
   const imageUrl = await generateOgImage("/screenshot/quiz", encodeString("/screenshot/quiz"));
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
   return c.res({
     image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
     intents: [
-      <Button action="/play/">Create</Button>,
-      <Button action="/">Home</Button>
+      <TextInput placeholder="Input your question" />,
+      <Button.Transaction target="/ask">Ask</Button.Transaction>,
+      <Button action="/play" >Next</Button>,
+      <Button action="/">Home</Button>,
+      <Button.Redirect location="https://google.com">Share</Button.Redirect>
     ]
   })
 })
@@ -291,52 +320,72 @@ app.frame('/play', async (c) => {
     intents,
   })
 })
-app.frame('/solved/:id', async(c) => {
-  const { transactionId, buttonValue,inputText,req } = c
-  const answer = await getAnswerNow(transactionId || buttonValue as string);
-    const address = await getAddress(transactionId || buttonValue as string)
-    let imageUrl = "";
-    const unixTimestamp = Math.floor(Date.now() / 1000);
-    const quiz=getDataById("quiz",req.param("id"))
-    let id=""
-    if (answer) {
-      const near = await calculateSimilarity([answer, quiz.answer])
-      await saveData({ question: inputText, address, answer, similarity: near, quizId: req.param("id") }, "quiz-solved")
-      
-      imageUrl = await generateOgImage(`/screenshot/question/${encodeString(answer as string)}`, data._id.toString());
-      id=data._id.toString();
-    }
-  return c.res({
-    image: (
-      <div
-        style={{
-          height: '100%',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#fff',
-          fontSize: 32,
-          fontWeight: 600,
-        }}
-      >
-        <svg
-          width="75"
-          viewBox="0 0 75 65"
-          fill="#000"
-          style={{ margin: '0 75px' }}
-        >
-          <path d="M37.59.25l36.95 64H.64l36.95-64z"></path>
-        </svg>
-        <div style={{ marginTop: 40 }}>Please wait while ORA AI</div>
-        <div>processing your transaction</div>
-        <div>click refresh button to see the result</div>
-      </div>
+app.transaction('/ask', async (c) => {
+  // Contract transaction response.
+  const { inputText } = c
 
-    ),
-    intents: [<Button action={`/solved`} value={transactionId || buttonValue}>Refresh</Button>]
+  const est = await estimateFee();
+  return c.contract({
+    abi,
+    chainId: 'eip155:11155420',
+    functionName: 'calculateAIResult',
+    args: [11, inputText],
+    to: process.env.NEXT_PUBLIC_OAO_PROMPT as any,
+    value: parseEther(convertBigIntToEther(est))
   })
+})
+app.frame('/solved/:id', async(c) => {
+  const { transactionId, buttonValue,req  } = c
+  const pleaseWaitImg=pleaseWait()
+  const processing=processingImage()
+  try{
+    const answer = await getAnswerNow(transactionId || buttonValue as string);
+    const address = await getAddress(transactionId || buttonValue as string);
+    const question = await getQuestion(transactionId || buttonValue as string);
+    const unixTimestamp = Math.floor(Date.now() / 1000);
+    const quiz=await getDataById("quiz",req.param("id"))
+    
+    if (answer && address && question) {
+      const near = await calculateSimilarity([answer, (quiz as any).answer])
+    if(near > 0.5){
+      const what = {
+        aiAnswer: answer,
+        quiz: (quiz as any).answer,
+        question
+      };
+      const saveSolved=await saveData({ question, address, answer, similarity: near, quizId: (quiz as any)._id.toString() }, "quiz-solved")
+      const imageUrl = await generateOgImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`, saveSolved._id.toString());
+      return c.res({
+        image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+        intents: [<Button action="/play" >Next</Button>,
+          <Button action="/">Home</Button>]
+      })
+    }else{
+      const imageUrl =  await generateOgImage(`/screenshot/quiz/fail/${encodeString((quiz as any).answer)}`, encodeString(`/screenshot/quiz/fail/${encodeString((quiz as any).answer)}`))
+      return c.res({
+        image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+        intents: [<TextInput placeholder="Input your question" />,
+          <Button.Transaction target="/ask">Ask</Button.Transaction>,
+          <Button action="/play" >Next</Button>,
+          <Button action="/">Home</Button>,
+          <Button.Redirect location="https://google.com">Share</Button.Redirect>]
+      })
+    }
+       
+    }else{
+      return c.res({
+        image: pleaseWaitImg,
+        intents: [<Button action={`/solved/${quiz._id.toString()}`} value={transactionId || buttonValue}>Refresh</Button>]
+      })
+    }
+  }catch{
+    return c.res({
+      image: pleaseWaitImg,
+      intents: [<Button action={`/solved/${req.param("id")}`} value={transactionId || buttonValue}>Refresh</Button>]
+    })
+  }
+  
+  
 })
 
 
