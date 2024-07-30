@@ -7,7 +7,7 @@ import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
 
 import { getTableSize, getDataByColumnNamePaginated, getDataByQuery, getDataById, saveData } from '~~/action/mongo'
-import { generateOgImage } from '~~/action/create-image'
+import { generateOgImage,generateImage } from '~~/action/create-image'
 import { encodeString, decodeString } from '~~/action/encode'
 import { estimateFee, convertBigIntToEther, getAnswerNow, getAddress,calculateSimilarity,getQuestion } from '~~/action/eth'
 import { abi } from '~~/abi/abi'
@@ -68,7 +68,7 @@ app.frame('/', async (c) => {
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
   return c.res({
-    image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+    image: !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
     intents: [
       <Button action="/play">
         Play
@@ -77,15 +77,42 @@ app.frame('/', async (c) => {
     ]
   })
 })
+app.hono.get('/img/:id', async(c) => {
+  const {req}=c
+  const url=decodeString(req.param("id"))
+  const imageBuffer=await generateImage(url)
+  return new Response(imageBuffer, {
+    headers: {
+      'Content-Type': 'image/png'
+    }
+  })
+})
 app.frame('/share/:id', async (c) => {
 const {req}=c
+
+let intents = [
+    <Button action={`/share/${req.param("id")}`} >Play</Button>,
+  
+];
+let addresses=[];
 //@ts-ignore
-const fid = c.frameData.fid;
+if(c?.frameData?.fid){
+  //@ts-ignore
+  const fid = c.frameData.fid;
 //   //@ts-ignore
 const userData = await client.lookupUserByFid(fid);
 //@ts-ignore
 let verifiedAddresses = userData.result.user.verifiedAddresses.eth_addresses
-let addresses = verifiedAddresses.concat(userData.result.user.custodyAddress);
+addresses = verifiedAddresses.concat(userData.result.user.custodyAddress);
+intents = [
+  <TextInput placeholder="Input your question" />,
+  <Button.Transaction target="/ask">Ask</Button.Transaction>,
+  <Button action="/play" >Next</Button>,
+  <Button action="/">Home</Button>,
+  <Button.Redirect location={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${req.param("id")}`}>Share</Button.Redirect>,
+]
+}
+
   const getQuizPaginated = await getDataById("quiz", req.param("id"))
   const getQuizSolved = await getDataByQuery("quiz-solved", { address: { $in: addresses }, quizId: getQuizPaginated._id.toString() })
   const what = getQuizSolved.length > 0 ? {
@@ -97,21 +124,16 @@ let addresses = verifiedAddresses.concat(userData.result.user.custodyAddress);
   const imageUrl = getQuizSolved.length > 0 ? await generateOgImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`, getQuizSolved[0]._id.toString()) : await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated.answer)}`, getQuizPaginated._id.toString());
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
-  let intents = getQuizSolved.length > 0 ? [
-    <Button action="/play" >Next</Button>,
-    <Button action="/">Home</Button>,
-    <Button.Redirect location={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${getQuizPaginated._id.toString()}`}>Share</Button.Redirect>
-
-  ] : [
-    <TextInput placeholder="Input your question" />,
-    <Button.Transaction target="/ask">Ask</Button.Transaction>,
-    <Button action="/play" >Next</Button>,
-    <Button action="/">Home</Button>,
-    <Button.Redirect location={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${getQuizPaginated._id.toString()}`}>Share</Button.Redirect>,
-  ];
+  if(getQuizSolved.length>0 || addresses.some((a:any)=>a===getQuizPaginated.address)){
+    intents=[
+      <Button action="/play" >Next</Button>,
+      <Button action="/">Home</Button>,
+      <Button.Redirect location={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${getQuizPaginated._id.toString()}`}>Share</Button.Redirect>,
+    ]
+  }
   return c.res({
     action:`/solved/${getQuizPaginated._id.toString()}`,
-    image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+    image: !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
     intents,
   })
 })
@@ -120,7 +142,7 @@ app.frame('/quiz', async (c) => {
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
   return c.res({
-    image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+    image: !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
     intents: [
       <TextInput placeholder="Input your question" />,
       <Button action="/quiz-sure">Create</Button>,
@@ -146,7 +168,7 @@ app.frame('/quiz-sure', async (c) => {
   ];
   return c.res({
     action: `/finish/${question}`,
-    image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+    image: !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
     intents
   })
 })
@@ -210,7 +232,7 @@ app.frame('/refresh/:question', async (c) => {
     if(getQuizPaginated.length>0){
       const imageUrl = await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated[0].answer)}`, getQuizPaginated[0]._id.toString());
       return c.res({
-        image:  imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+        image:  !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
         intents: [<Button action="/">Home</Button>,
         <Button.Redirect location={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${getQuizPaginated[0]._id.toString()}`}>Share</Button.Redirect>,]
       })  
@@ -228,7 +250,7 @@ app.frame('/refresh/:question', async (c) => {
     }
     
     return c.res({
-      image: answer ? imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any : pleaseWaitImg,
+      image: answer ? !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any : pleaseWaitImg,
       intents: answer ? [<Button action="/">Home</Button>,
       <Button.Redirect location={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${id}`}>Share</Button.Redirect>,] : [<Button action="/refresh" value={buttonValue}>Refresh</Button>]
     })
@@ -270,16 +292,17 @@ app.frame('/play', async (c) => {
   //@ts-ignore
   const getQuizPaginated = await getDataByColumnNamePaginated("quiz", {}, previousState.count + 1, 1)
   const getQuizSolved = await getDataByQuery("quiz-solved", { address: { $in: addresses }, quizId: getQuizPaginated[0]._id.toString() })
+  
   const what = getQuizSolved.length > 0 ? {
     aiAnswer: getQuizSolved[0].answer,
     quiz: getQuizPaginated[0].answer,
     question: getQuizSolved[0].question
   } : null;
-
+console.log(`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${getQuizPaginated[0]._id.toString()}`)
   const imageUrl = getQuizSolved.length > 0 ? await generateOgImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`, getQuizSolved[0]._id.toString()) : await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated[0].answer)}`, getQuizPaginated[0]._id);
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
-  let intents = getQuizSolved.length > 0 ? [
+  let intents = getQuizSolved.length > 0 || addresses.some((a:any)=>a===getQuizPaginated[0].address) ? [
     <Button action="/play" >Next</Button>,
     <Button action="/">Home</Button>,
     <Button.Redirect location={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${getQuizPaginated[0]._id.toString()}`}>Share</Button.Redirect>
@@ -293,7 +316,7 @@ app.frame('/play', async (c) => {
   ];
   return c.res({
     action:`/solved/${getQuizPaginated[0]._id.toString()}`,
-    image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+    image: !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
     intents,
   })
 })
@@ -327,7 +350,7 @@ app.frame('/solved/:id', async(c) => {
       };
       const imageUrl = await generateOgImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`, getQuizPaginated[0]._id.toString());
       return c.res({
-        image:  imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+        image:  !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
         intents: [<Button action="/">Home</Button>,
         <Button.Redirect location={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${getQuizPaginated[0]._id.toString()}`}>Share</Button.Redirect>,]
       })  
@@ -349,14 +372,14 @@ app.frame('/solved/:id', async(c) => {
       const saveSolved=await saveData({ transactionId:transactionId || buttonValue as string,question, address, answer, similarity: near, quizId: (quiz as any)._id.toString() }, "quiz-solved")
       const imageUrl = await generateOgImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`, saveSolved._id.toString());
       return c.res({
-        image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+        image: !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
         intents: [<Button action="/play" >Next</Button>,
           <Button action="/">Home</Button>]
       })
     }else{
       const imageUrl =  await generateOgImage(`/screenshot/quiz/fail/${encodeString((quiz as any).answer)}`, encodeString(`/screenshot/quiz/fail/${encodeString((quiz as any).answer)}`))
       return c.res({
-        image: imageUrl.trim().length === 0 ? processing : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
+        image: !imageUrl.includes("file") ? imageUrl.trim().length === 0 ?processing:imageUrl : `${process.env.MINIO_URL}/image/${imageUrl}?t=${unixTimestamp}` as any,
         intents: [<TextInput placeholder="Input your question" />,
           <Button.Transaction target="/ask">Ask</Button.Transaction>,
           <Button action="/play" >Next</Button>,

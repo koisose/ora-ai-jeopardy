@@ -1,9 +1,9 @@
 
 import playwright from "playwright";
-import { getDataByColumnName,findAndUpdateData } from './mongo'
-import { saveBufferToMinio } from './minio'
-import { sampleQueue } from './worker';
+import { getDataByColumnName } from './mongo'
 import {encodeString} from './encode'
+import { sampleQueue } from './worker';
+
 export async function generateImage(where:string) {
 
   try {
@@ -29,8 +29,8 @@ export async function generateImage(where:string) {
     };
     // Capture a screenshot of the page as the OG image.
     const buffer = await page.screenshot({ type: "png",clip });
-  
-    console.log("The image has been saved!");
+    
+    
     // Close the browser.
     await browser.close();
     return buffer
@@ -46,11 +46,8 @@ export async function generateOgImage(where:any,id:string):Promise<string> {
     
     await sampleQueue.add("create-image", { data: { id:"file-"+id,where, type: "create-image" } },  { removeOnComplete: true, removeOnFail: true })
     if (check.length === 0) {
-      const imageBuffer=await generateImage(where);
-      const imageUrl=await saveBufferToMinio("image","file-"+id,imageBuffer);
-     
-      // await findAndUpdateData({url:"file-"+id},{url:"file-"+id},"image")
-      return imageUrl
+      const unixTimestamp = Math.floor(Date.now() / 1000);
+      return `${process.env.SCREENSHOT_URL}/api/img/${encodeString(where)}?t=${unixTimestamp}`;
     } else {
        return check[0].url
     }
