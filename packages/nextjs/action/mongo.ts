@@ -58,6 +58,8 @@ export async function findAndUpdateData(query: any, updateData: any, database: s
         //@ts-ignore
         const updatedDocument = await FlexibleModel.findOneAndUpdate(query, updateData, { new: true, upsert: true });
         console.log('Updated document:', updatedDocument);
+        return updatedDocument
+        
     } catch (err) {
         console.error('Error:', err);
     }
