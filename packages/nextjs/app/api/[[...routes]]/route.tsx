@@ -332,6 +332,7 @@ app.frame('/solved/:id', async (c) => {
   try {
     const quiz = await getDataById("quiz", req.param("id"))
     const getQuizPaginated = await getDataByColumnNamePaginated("quiz-solved", { transactionId: transactionId || buttonValue as string }, 1, 1)
+    
     if (getQuizPaginated.length > 0 && getQuizPaginated[0].solved) {
       
       return c.res({

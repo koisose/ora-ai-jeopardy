@@ -4,23 +4,25 @@ import { getDataByColumnName } from './mongo'
 import {encodeString} from './encode'
 import { sampleQueue } from './worker';
 
-export async function generateImage(where:string) {
+export async function generateImage(where: string) {
+  let browser;
+  let context;
+  let page;
 
   try {
-    const browser = await playwright.chromium.connectOverCDP(
+    browser = await playwright.chromium.connectOverCDP(
       process.env.BROWSERLESS as string,
     );
-  
-    const context = await browser.newContext();
-    const page = await context.newPage();
-  
+
+    context = await browser.newContext();
+    page = await context.newPage();
+
     // Set the viewport size to match the desired image dimensions.
     await page.setViewportSize({ width: 512, height: 512 });
-  
-  
+
     const url = process.env.SCREENSHOT_URL as string;
     // Navigate to the provided URL.
-    await page.goto(url + where);
+    await page.goto(url + where, { waitUntil: 'networkidle' });
     const clip = {
       x: 0,    // x coordinate
       y: 0,    // y coordinate
@@ -28,15 +30,17 @@ export async function generateImage(where:string) {
       height: 512  // height of the region
     };
     // Capture a screenshot of the page as the OG image.
-    const buffer = await page.screenshot({ type: "png",clip });
-    
-    
-    // Close the browser.
-    await browser.close();
-    return buffer
+    const buffer = await page.screenshot({ type: "png", clip });
+
+    return buffer;
   } catch (error) {
     console.error('Error generating image:', error);
     throw new Error('Failed to generate image.');
+  } finally {
+    // Ensure the browser is closed even if an error occurs.
+    if (page) await page.close();
+    if (context) await context.close();
+    if (browser) await browser.close();
   }
 }
 
