@@ -54,7 +54,7 @@ export const emailQueue = Queue(
                     const near = await calculateSimilarityPost({ sentence1: answer, sentence2: (quiz as any).answer })
                     if (near > 0.5) {
                         const saveSolved = await findAndUpdateData({ quizId: (quiz as any)._id.toString(), address }, { transactionId, question, address, answer, similarity: near, quizId: (quiz as any)._id.toString(), solved: true }, "quiz-solved")
-                        const imageBuffer = await generateImage(`/screenshot/solved?quiz=${encodeURIComponent(quiz)}&question=${encodeURIComponent(question)}`);
+                        const imageBuffer = await generateImage(`/screenshot/solved?quiz=${encodeURIComponent((quiz as any).answer)}&question=${encodeURIComponent(question)}`);
                         const imageUrl = await saveBufferToMinio("image", "file-" + saveSolved._id.toString(), imageBuffer);
                         await findAndUpdateData({ url: "file-" + saveSolved._id.toString() }, { url: imageUrl }, "image")
                     } else {
