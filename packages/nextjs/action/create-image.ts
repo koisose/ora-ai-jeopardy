@@ -14,9 +14,10 @@ export async function generateImage(where: string) {
   let page;
 
   try {
-    
+    // const sessions=await getSession()
+   
     browser = await playwright.chromium.connectOverCDP(
-        `ws://${process.env.BROWSERLESS as string}`,
+        `ws://${process.env.BROWSERLESS as string}?token=sdasd&timeout=10000`,
     );
 
     context = await browser.newContext();

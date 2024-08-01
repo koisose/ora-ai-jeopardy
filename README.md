@@ -1,9 +1,13 @@
 # Video Demo
 
-https://youtu.be/yXHeARMeNiI
+https://youtu.be/DhFTa_FSjhc
 
 # Web demo
 https://nextjs-five-tau-89.vercel.app/
+
+# Farcaster Frame demo
+
+https://warpcast.com/~/developers/frames?url=https%3A%2F%2Fnextjs-five-tau-89.vercel.app%2Fapi
 
 # Sentence similiarity technique
 

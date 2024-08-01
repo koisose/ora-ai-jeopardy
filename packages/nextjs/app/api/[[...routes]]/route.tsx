@@ -124,13 +124,9 @@ app.frame('/share/:id', async (c) => {
 
   const getQuizPaginated = await getDataById("quiz", req.param("id"))
   const getQuizSolved = await getDataByQuery("quiz-solved", { address: { $in: addresses }, quizId: getQuizPaginated._id.toString() })
-  const what = getQuizSolved.length > 0 ? {
-    aiAnswer: getQuizSolved[0].answer,
-    quiz: getQuizPaginated.answer,
-    question: getQuizSolved[0].question
-  } : null;
+  
 
-  const imageUrl = getQuizSolved.length > 0 ? await generateOgImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`, getQuizSolved[0]._id.toString()) : await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated.answer)}`, getQuizPaginated._id.toString());
+  const imageUrl = getQuizSolved.length > 0 ? await generateOgImage(`/screenshot/solved?quiz=${encodeURIComponent(getQuizPaginated.answer)}&question=${encodeURIComponent(getQuizSolved[0].question)}`, getQuizSolved[0]._id.toString()) : await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated.answer)}`, getQuizPaginated._id.toString());
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
   if (getQuizSolved.length > 0 || addresses.some((a: any) => a === getQuizPaginated.address)) {
@@ -291,13 +287,7 @@ app.frame('/play', async (c) => {
   const getQuizPaginated = await getDataByColumnNamePaginated("quiz", {}, previousState.count + 1, 1)
   const getQuizSolved = await getDataByQuery("quiz-solved", { address: { $in: addresses }, quizId: getQuizPaginated[0]._id.toString() })
 
-  const what = getQuizSolved.length > 0 ? {
-    aiAnswer: getQuizSolved[0].answer,
-    quiz: getQuizPaginated[0].answer,
-    question: getQuizSolved[0].question
-  } : null;
-
-  const imageUrl = getQuizSolved.length > 0 ? await generateOgImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`, getQuizSolved[0]._id.toString()) : await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated[0].answer)}`, getQuizPaginated[0]._id);
+  const imageUrl = getQuizSolved.length > 0 ? await generateOgImage(`/screenshot/solved?quiz=${encodeURIComponent(getQuizPaginated[0].answer)}&question=${encodeURIComponent(getQuizPaginated[0].question)}`, getQuizSolved[0]._id.toString()) : await generateOgImage(`/screenshot/question/${encodeString(getQuizPaginated[0].answer)}`, getQuizPaginated[0]._id);
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const processing = processingImage();
   let intents = getQuizSolved.length > 0 || addresses.some((a: any) => a === getQuizPaginated[0].address) ? [
