@@ -6,11 +6,11 @@ import { devtools } from 'frog/dev'
 import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
 
-import { getTableSize, getDataByColumnNamePaginated, getDataByQuery, getDataById, saveData } from '~~/action/mongo'
-import { generateOgImage, generateImage } from '~~/action/create-image'
+import { getTableSize, getDataByColumnNamePaginated, getDataByQuery, getDataById } from '~~/action/mongo'
+import { generateOgImage, generateImage,getSession } from '~~/action/create-image'
 import { encodeString, decodeString } from '~~/action/encode'
 import { sampleQueue } from '~~/action/worker';
-import { estimateFee, convertBigIntToEther, getAnswerNow, getAddress, calculateSimilarity, getQuestion } from '~~/action/eth'
+import { estimateFee, convertBigIntToEther } from '~~/action/eth'
 import { abi } from '~~/abi/abi'
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 import { parseEther } from 'viem'
@@ -82,6 +82,14 @@ app.hono.get('/img/:id', async (c) => {
   const { req } = c
   const url = decodeString(req.param("id"))
   const imageBuffer = await generateImage(url)
+  return new Response(imageBuffer, {
+    headers: {
+      'Content-Type': 'image/png'
+    }
+  })
+})
+app.hono.get('/panda',async (c)=>{
+  const imageBuffer = await generateImage("/screenshot/title")
   return new Response(imageBuffer, {
     headers: {
       'Content-Type': 'image/png'
@@ -325,6 +333,7 @@ app.transaction('/ask', async (c) => {
     value: parseEther(convertBigIntToEther(est))
   })
 })
+
 app.frame('/solved/:id', async (c) => {
   const { transactionId, buttonValue, req } = c
   const pleaseWaitImg = pleaseWait()
@@ -332,7 +341,7 @@ app.frame('/solved/:id', async (c) => {
   try {
     const quiz = await getDataById("quiz", req.param("id"))
     const getQuizPaginated = await getDataByColumnNamePaginated("quiz-solved", { transactionId: transactionId || buttonValue as string }, 1, 1)
-    
+    await sampleQueue.add("create-image", { data: { quiz, transactionId: transactionId || buttonValue, type: "check" } }, { removeOnComplete: true, removeOnFail: true })
     if (getQuizPaginated.length > 0 && getQuizPaginated[0].solved) {
       
       return c.res({
@@ -351,7 +360,7 @@ app.frame('/solved/:id', async (c) => {
         <Button.Link href={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${(quiz as any)._id.toString()}`}>Share</Button.Link>]
       })
     }
-    await sampleQueue.add("create-image", { data: { quiz, transactionId: transactionId || buttonValue, type: "check" } }, { removeOnComplete: true, removeOnFail: true })
+    
      
       return c.res({
         image: pleaseWaitImg,

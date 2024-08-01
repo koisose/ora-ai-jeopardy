@@ -7,7 +7,7 @@ export async function register() {
     const { encodeString } = await import('./action/encode');
     const { saveBufferToMinio } = await import('./action/minio');
     const { findAndUpdateData, saveData } = await import('./action/mongo');
-    const { getAnswerNow, getAddress, getQuestion, calculateSimilarity } = await import('./action/eth');
+    const { getAnswerNow, getAddress, getQuestion, calculateSimilarityPost } = await import('./action/eth');
     const { connection } = await import('./action/worker');
     let i = 0;
     new Worker(
@@ -39,6 +39,7 @@ export async function register() {
           console.log("refresh question")
         }
         if (job?.data.data.type === "check") {
+          console.log("checking")
           try {
             const answer = await getAnswerNow(job?.data.data.transactionId);
             const address = await getAddress(job?.data.data.transactionId);
@@ -47,16 +48,10 @@ export async function register() {
             const transactionId = job?.data.data.transactionId;
 
             if (answer && address && question) {
-              const near = await calculateSimilarity([answer, (quiz as any).answer])
+              const near = await calculateSimilarityPost({sentence1:answer, sentence2:(quiz as any).answer})
               if (near > 0.5) {
-                const what = {
-                  aiAnswer: answer,
-                  quiz: (quiz as any).answer,
-                  question
-                };
-
                 const saveSolved = await findAndUpdateData({ quizId: (quiz as any)._id.toString(), address }, { transactionId, question, address, answer, similarity: near, quizId: (quiz as any)._id.toString(), solved: true }, "quiz-solved")
-                const imageBuffer = await generateImage(`/screenshot/solved/${encodeString(JSON.stringify(what))}`);
+                const imageBuffer = await generateImage(`/screenshot/solved?quiz=${encodeURIComponent(quiz)}&question=${encodeURIComponent(question)}`);
                 const imageUrl = await saveBufferToMinio("image", "file-" + saveSolved._id.toString(), imageBuffer);
                 await findAndUpdateData({ url: "file-" + saveSolved._id.toString() }, { url: imageUrl }, "image")
               } else {
@@ -70,6 +65,8 @@ export async function register() {
             }
             console.log("check")
           } catch (e) {
+            //@ts-ignore
+            console.log("apdpapsd")
             //@ts-ignore
             console.log(e.message)
           }

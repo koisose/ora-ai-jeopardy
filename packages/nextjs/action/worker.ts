@@ -4,7 +4,8 @@ import {  Queue } from 'bullmq';
 
 import Redis from 'ioredis';
 export const connection = new Redis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: null
+  maxRetriesPerRequest: null,
+  connectTimeout: 30000,  
 });
 
 export const sampleQueue = new Queue('sampleQueue', {

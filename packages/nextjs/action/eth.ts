@@ -1,13 +1,25 @@
-import * as use from '@tensorflow-models/universal-sentence-encoder';
-import * as tf from '@tensorflow/tfjs';
 import { formatUnits } from 'viem'
 import { abi,optimismAbi } from '../abi/abi'
 import { createPublicClient, http,parseEventLogs } from 'viem'
 import { optimismSepolia } from 'viem/chains'
+import ky from 'ky';
 //@ts-ignore
 // const { connector } = getAccount(wagmiConfig)
 
-
+export async function calculateSimilarityPost(data:any){
+  try {
+    const response = await ky.post("https://sentence.koisose.lol/calculate-similarity", {
+      json: data,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).json();
+    //@ts-ignore
+    return response.similarity;
+  } catch (error) {
+    return 0
+  }
+}
 const publicClient = createPublicClient({
   chain: optimismSepolia,
   transport: http('https://optimism-sepolia.infura.io/v3/'+process.env.INFURA)
@@ -71,32 +83,7 @@ export async function getQuestion(hash:any){
    
 }
 
-export async function calculateSimilarity(sentences: any) {
-  // Load the Universal Sentence Encoder model
-  const model = await use.load();
 
-  // Get sentence embeddings
-  const embeddings = await model.embed(sentences);
-
-  // Convert embeddings to array
-  const embArray1 = embeddings.arraySync()[0];
-  const embArray2 = embeddings.arraySync()[1];
-
-  // Function to calculate cosine similarity
-  //@ts-ignore
-  function cosineSimilarity(vecA, vecB) {
-    const dotProduct = tf.dot(vecA, vecB).dataSync();
-    const magnitudeA = tf.norm(vecA).dataSync();
-    const magnitudeB = tf.norm(vecB).dataSync();
-    //@ts-ignore
-    return dotProduct / (magnitudeA * magnitudeB);
-  }
-
-  // Calculate cosine similarity
-  const similarity = cosineSimilarity(tf.tensor(embArray1), tf.tensor(embArray2));
-
-  return similarity;
-}
 
 
 export const convertBigIntToEther = (bigIntValue: any) => {

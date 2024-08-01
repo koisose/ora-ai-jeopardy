@@ -3,15 +3,20 @@ import playwright from "playwright";
 import { getDataByColumnName } from './mongo'
 import {encodeString} from './encode'
 import { sampleQueue } from './worker';
-
+import ky from 'ky'
+export async function getSession(){
+  const response = await ky.get(`http://${process.env.BROWSERLESS}/sessions?token=adssad`).json();
+  return response;
+}
 export async function generateImage(where: string) {
   let browser;
   let context;
   let page;
 
   try {
+    
     browser = await playwright.chromium.connectOverCDP(
-      process.env.BROWSERLESS as string,
+        `ws://${process.env.BROWSERLESS as string}`,
     );
 
     context = await browser.newContext();
@@ -23,6 +28,7 @@ export async function generateImage(where: string) {
     const url = process.env.SCREENSHOT_URL as string;
     // Navigate to the provided URL.
     await page.goto(url + where, { waitUntil: 'networkidle' });
+   
     const clip = {
       x: 0,    // x coordinate
       y: 0,    // y coordinate
@@ -31,16 +37,16 @@ export async function generateImage(where: string) {
     };
     // Capture a screenshot of the page as the OG image.
     const buffer = await page.screenshot({ type: "png", clip });
-
+    if (page) await page.close();
+    if (context) await context.close();
     return buffer;
   } catch (error) {
-    console.error('Error generating image:', error);
-    throw new Error('Failed to generate image.');
-  } finally {
-    // Ensure the browser is closed even if an error occurs.
     if (page) await page.close();
     if (context) await context.close();
     if (browser) await browser.close();
+    console.error('Error generating image:', error);
+    throw new Error('Failed to generate image.');
+  
   }
 }
 
