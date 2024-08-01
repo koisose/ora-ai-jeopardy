@@ -2,8 +2,14 @@
 import playwright from "playwright";
 import { getDataByColumnName } from './mongo'
 import {encodeString} from './encode'
-import { sampleQueue } from './worker';
+import {emailQueue} from '../app/api/queue/route'
 import ky from 'ky'
+import { Buffer } from 'buffer';
+const encodeBase64 = (json:any) => {
+  const stringifiedJson = JSON.stringify(json);
+  const encodedJson = Buffer.from(stringifiedJson).toString('base64');
+  return encodedJson;
+};
 export async function getSession(){
   const response = await ky.get(`http://${process.env.BROWSERLESS}/sessions?token=adssad`).json();
   return response;
@@ -14,10 +20,10 @@ export async function generateImage(where: string) {
   let page;
 
   try {
-    // const sessions=await getSession()
-   
+    
+  
     browser = await playwright.chromium.connectOverCDP(
-        `ws://${process.env.BROWSERLESS as string}?token=sdasd&timeout=10000`,
+        `ws://${process.env.BROWSERLESS as string}?token=sdasd&timeout=10000&launch=${encodeBase64({"timeout":10000})}`,
     );
 
     context = await browser.newContext();
@@ -28,7 +34,7 @@ export async function generateImage(where: string) {
 
     const url = process.env.SCREENSHOT_URL as string;
     // Navigate to the provided URL.
-    await page.goto(url + where, { waitUntil: 'networkidle' });
+    await page.goto(url + where, { waitUntil: 'networkidle', timeout: 10000 });
    
     const clip = {
       x: 0,    // x coordinate
@@ -40,6 +46,7 @@ export async function generateImage(where: string) {
     const buffer = await page.screenshot({ type: "png", clip });
     if (page) await page.close();
     if (context) await context.close();
+    if (browser) await browser.close();
     return buffer;
   } catch (error) {
     if (page) await page.close();
@@ -55,7 +62,7 @@ export async function generateOgImage(where:any,id:string):Promise<string> {
   try{
     const check = await getDataByColumnName("image", "url", "file-"+id);
     
-    await sampleQueue.add("create-image", { data: { id:"file-"+id,where, type: "create-image" } },  { removeOnComplete: true, removeOnFail: true })
+    await emailQueue.enqueue({ data: { id:"file-"+id,where, type: "create-image" } })
     if (check.length === 0) {
       const unixTimestamp = Math.floor(Date.now() / 1000);
       return `${process.env.SCREENSHOT_URL}/api/img/${encodeString(where)}?t=${unixTimestamp}`;

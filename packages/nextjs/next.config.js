@@ -5,7 +5,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    instrumentationHook: true,
+    instrumentationHook: false,
   },
   reactStrictMode: true,
   typescript: {

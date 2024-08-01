@@ -7,13 +7,14 @@ import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
 
 import { getTableSize, getDataByColumnNamePaginated, getDataByQuery, getDataById } from '~~/action/mongo'
-import { generateOgImage, generateImage,getSession } from '~~/action/create-image'
+import { generateOgImage, generateImage } from '~~/action/create-image'
 import { encodeString, decodeString } from '~~/action/encode'
-import { sampleQueue } from '~~/action/worker';
 import { estimateFee, convertBigIntToEther } from '~~/action/eth'
 import { abi } from '~~/abi/abi'
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 import { parseEther } from 'viem'
+import {emailQueue} from '../queue/route'
+
 const client = new NeynarAPIClient(process.env.NEYNAR as string);
 //@ts-ignore
 const app = new Frog({
@@ -64,6 +65,7 @@ function pleaseWait() {
 
   )
 }
+
 app.frame('/', async (c) => {
   const imageUrl = await generateOgImage("/screenshot/title", encodeString("/screenshot/title"));
   const unixTimestamp = Math.floor(Date.now() / 1000);
@@ -89,12 +91,8 @@ app.hono.get('/img/:id', async (c) => {
   })
 })
 app.hono.get('/panda',async (c)=>{
-  const imageBuffer = await generateImage("/screenshot/title")
-  return new Response(imageBuffer, {
-    headers: {
-      'Content-Type': 'image/png'
-    }
-  })
+ const a=await emailQueue.enqueue("66a36cce13f56d77cc0c0e4f")
+  return new Response("d")
 })
 app.frame('/share/:id', async (c) => {
   const { req } = c
@@ -241,7 +239,7 @@ app.frame('/refresh/:question', async (c) => {
         <Button.Link href={`https://warpcast.com/~/compose?text=Try%20To%20Solve%20This!&embeds[]=${process.env.SCREENSHOT_URL}/api/share/${getQuizPaginated[0]._id.toString()}`}>Share</Button.Link>,]
       })
     }
-    await sampleQueue.add("create-image", { data: { question: JSON.parse(question).input, transactionId: buttonValue as string , type: "refresh-question" } }, { removeOnComplete: true, removeOnFail: true })
+    await emailQueue.enqueue({ data: { question: JSON.parse(question).input, transactionId: buttonValue as string , type: "refresh-question" } })
 
     return c.res({
       image: pleaseWaitImg,
@@ -331,7 +329,7 @@ app.frame('/solved/:id', async (c) => {
   try {
     const quiz = await getDataById("quiz", req.param("id"))
     const getQuizPaginated = await getDataByColumnNamePaginated("quiz-solved", { transactionId: transactionId || buttonValue as string }, 1, 1)
-    await sampleQueue.add("create-image", { data: { quiz, transactionId: transactionId || buttonValue, type: "check" } }, { removeOnComplete: true, removeOnFail: true })
+    await emailQueue.enqueue({ data: { quiz, transactionId: transactionId || buttonValue, type: "check" } })
     if (getQuizPaginated.length > 0 && getQuizPaginated[0].solved) {
       
       return c.res({
